@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 from torch_geometric_temporal.signal import StaticGraphTemporalSignal
+from torch_geometric_temporal.signal.train_test_split import temporal_signal_split
 
 
 def load_dataset_for_stgcn(window_size=12):
@@ -36,8 +37,10 @@ def load_dataset_for_stgcn(window_size=12):
     edge_weight = np.array(edge_weights)  # Shape: (num_edges,)
 
     # Create temporal features and targets
-    num_nodes = velocity_matrix.shape[1]    # 288 nodes (columns)
-    num_time_steps = velocity_matrix.shape[0]  # 12672 time steps (rows, 5-min intervals representing 44 days in total)
+    num_nodes = velocity_matrix.shape[1]  # 288 nodes (columns)
+    num_time_steps = velocity_matrix.shape[
+        0
+    ]  # 12672 time steps (rows, 5-min intervals representing 44 days in total)
 
     # We'll create sequences where we use window_size previous time steps as features
     # and predict the next time step
@@ -48,12 +51,12 @@ def load_dataset_for_stgcn(window_size=12):
     for t in range(num_time_steps - window_size):
         # Features: window_size previous time steps for all nodes
         # Shape: (num_nodes, window_size)
-        feature_window = velocity_matrix[t:t+window_size, :].T
+        feature_window = velocity_matrix[t : t + window_size, :].T
         features.append(feature_window)
-        
+
         # Target: next time step after the window for all nodes
         # Shape: (num_nodes, 1)
-        target = velocity_matrix[t+window_size, :].reshape(num_nodes, 1)
+        target = velocity_matrix[t + window_size, :].reshape(num_nodes, 1)
         targets.append(target)
 
     # Convert to StaticGraphTemporalSignal
@@ -65,3 +68,26 @@ def load_dataset_for_stgcn(window_size=12):
     )
 
     return dataset
+
+
+def split_dataset(dataset, train_ratio=0.8, validation_split=0.5):
+    """
+    Split the dataset into training and testing sets.
+
+    Args:
+        dataset (StaticGraphTemporalSignal): The dataset to split.
+        train_ratio (float): The ratio of the dataset to use for training.
+        validation_split (float): The ratio of the test set to use for validation.
+
+    Returns:
+        Tuple[StaticGraphTemporalSignal, StaticGraphTemporalSignal, StaticGraphTemporalSignal]: The training, testing and validation datasets.
+    """
+
+    # Split the dataset into training and testing sets
+    train_dataset, test_dataset = temporal_signal_split(dataset, train_ratio=train_ratio)
+
+    # Further split the test dataset into testing and validation sets
+    test_dataset, val_dataset = temporal_signal_split(test_dataset, train_ratio=validation_split)
+
+    # Return the datasets
+    return train_dataset, test_dataset, val_dataset
