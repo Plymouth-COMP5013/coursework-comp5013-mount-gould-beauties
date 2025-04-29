@@ -20,29 +20,41 @@ class STGCN(torch.nn.Module):
 
     Args:
         in_channels (int): Number of input channels (features).
-        spatial_channels (int): Number of channels for the spatial convolutional layers.
+        hidden_channels (int): Number of channels for the spatial convolutional layers.
         out_channels (int): Number of output channels.
         num_nodes (int): Number of nodes in the graph.
         kernel_size (int, optional): Size of the convolutional kernel. Default is 3.
     """
 
 
-    def __init__(self, in_channels, spatial_channels, out_channels, num_nodes, kernel_size=3):
+    def __init__(self, in_channels, hidden_channels, out_channels, num_nodes, kernel_size=3):
         super(STGCN, self).__init__()
-        self.st_conv1 = STConv(in_channels=in_channels,
-                               out_channels=spatial_channels,
-                               kernel_size=kernel_size,
-                               K=3, # order of Chebyshev polynomial
-                               normalization="sym")
 
-        self.st_conv2 = STConv(in_channels=spatial_channels,
-                               out_channels=spatial_channels,
-                               kernel_size=kernel_size,
-                               K=3,
-                               normalization="sym")
+        # The first spatio-temporal convolutional layer
+        self.st_conv1 = STConv(
+            num_nodes=num_nodes,
+            in_channels=in_channels,
+            hidden_channels=hidden_channels,
+            out_channels=out_channels,
+            kernel_size=kernel_size,
+            K=3,  # order of Chebyshev polynomial
+            normalization="sym"
+        )
 
+        # The second spatio-temporal convolutional layer
+        self.st_conv2 = STConv(
+            num_nodes=num_nodes,
+            in_channels=in_channels,
+            hidden_channels=hidden_channels,
+            out_channels=out_channels,
+            kernel_size=kernel_size,
+            K=3,  # order of Chebyshev polynomial
+            normalization="sym"
+        )
+
+        # Final convolutional layer to reduce to output features
         self.final_conv = torch.nn.Conv2d(
-            in_channels=spatial_channels,
+            in_channels=out_channels,
             out_channels=out_channels,
             kernel_size=(1, 1)
         )
