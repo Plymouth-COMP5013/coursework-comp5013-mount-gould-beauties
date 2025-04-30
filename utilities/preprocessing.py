@@ -16,11 +16,11 @@ def load_dataset_for_stgcn(window_size=12):
     """
     # Load velocity data (speeds at sensor stations)
     velocity_df = pd.read_csv("dataset/PeMSD7_V_228.csv", header=None)
-    velocity_matrix = velocity_df.values  # Shape: (288, 12672)
+    velocity_matrix = velocity_df.values  # Shape: (228, 12672)
 
     # Load adjacency matrix (data structure of the graph)
     adj_df = pd.read_csv("dataset/PeMSD7_W_228.csv", header=None)
-    adj_matrix = adj_df.values  # Shape: (288, 288)
+    adj_matrix = adj_df.values  # Shape: (228, 228)
 
     # Create edge_index and edge_weight from adjacency matrix
     edge_indices = []
@@ -37,7 +37,7 @@ def load_dataset_for_stgcn(window_size=12):
     edge_weight = np.array(edge_weights)  # Shape: (num_edges,)
 
     # Create temporal features and targets
-    num_nodes = velocity_matrix.shape[1]  # 288 nodes (columns)
+    num_nodes = velocity_matrix.shape[1]  # 228 nodes (columns)
     num_time_steps = velocity_matrix.shape[
         0
     ]  # 12672 time steps (rows, 5-min intervals representing 44 days in total)
@@ -70,6 +70,7 @@ def load_dataset_for_stgcn(window_size=12):
     return dataset
 
 
+# This is deprecated, but kept for reference
 def split_dataset(dataset, train_ratio=0.8, validation_split=0.5):
     """
     Split the dataset into training and testing sets.
@@ -91,3 +92,66 @@ def split_dataset(dataset, train_ratio=0.8, validation_split=0.5):
 
     # Return the datasets
     return train_dataset, test_dataset, val_dataset
+
+
+def train_test_split(dataset):
+    """
+    Split the dataset into exactly half, since training will be every weekday in May
+    and testing will be every weekday in June.
+
+    Args:
+        dataset (StaticGraphTemporalSignal): The dataset to split.
+
+    Returns:
+        Tuple[StaticGraphTemporalSignal, StaticGraphTemporalSignal]: The training and testing datasets.
+    """
+
+    # Split the dataset into training and testing sets
+    train_dataset, test_dataset = temporal_signal_split(dataset, train_ratio=0.5)
+
+    # Return the datasets
+    return train_dataset, test_dataset
+
+
+def subset_data(dataset, subset_ratio):
+    """
+    Make a subset of the dataset for testing purposes.
+    
+    Args:
+        dataset (StaticGraphTemporalSignal): The dataset to subset.
+        subset_ratio (float): The ratio of the dataset to use for the subset.
+
+    Returns:
+        StaticGraphTemporalSignal: The subset of the dataset.
+    """
+
+    # Split the dataset into subset and remaining
+    subset_dataset, remaining_dataset = temporal_signal_split(
+        dataset, train_ratio=subset_ratio
+    )
+
+    # Return the subset dataset
+    return subset_dataset
+
+
+def train_test_subset(dataset, subset_ratio):
+    """
+    Split the dataset into training and testing sets, and make a subset of both sets for testing purposes.
+    
+    Args:
+        dataset (StaticGraphTemporalSignal): The dataset to split and subset.
+        subset_ratio (float): The ratio of the dataset to use for the subset.
+
+    Returns:
+        Tuple[StaticGraphTemporalSignal, StaticGraphTemporalSignal]: The training and testing datasets, after subsetting.
+    """
+
+    # Use the train_test_split function to split the dataset into training and testing sets
+    train_dataset, test_dataset = train_test_split(dataset)
+
+    # Use the subset_data function to make a subset of both the training and testing sets
+    train_subset = subset_data(train_dataset, subset_ratio)
+    test_subset = subset_data(test_dataset, subset_ratio)
+
+    # Return the training and testing subsets
+    return train_subset, test_subset
