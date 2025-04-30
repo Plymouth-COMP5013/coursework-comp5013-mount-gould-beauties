@@ -1,3 +1,7 @@
+# Author: Reef Lakin
+# Last Modified: 30.04.2025
+# Description: A file to test the dataset quality and ensure that the data is loaded correctly.
+
 # ========== IMPORTS ==========
 from utilities.preprocessing import load_dataset_for_stgcn, split_dataset
 

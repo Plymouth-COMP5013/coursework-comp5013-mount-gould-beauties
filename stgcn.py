@@ -59,7 +59,7 @@ def train_model(model, loader, optimizer, loss_fn):
         edge_index = snapshot.edge_index
         edge_weight = snapshot.edge_weight
 
-        x = x.permute(0, 1, 2, 3)
+        # x = x.permute(0, 1, 2, 3)
         out = model(x, edge_index, edge_weight).squeeze(-1)  # shape: [1, N]
 
         loss = loss_fn(out, y)
@@ -82,7 +82,7 @@ def evaluate_model(model, loader, loss_fn):
             edge_index = snapshot.edge_index
             edge_weight = snapshot.edge_weight
 
-            x = x.permute(0, 1, 2, 3)
+            # x = x.permute(0, 1, 2, 3)
             out = model(x, edge_index, edge_weight).squeeze(-1)
             loss = loss_fn(out, y)
             total_loss += loss.item()
