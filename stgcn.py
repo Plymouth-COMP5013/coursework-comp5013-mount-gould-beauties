@@ -7,7 +7,6 @@
 #   https://pytorch-geometric-temporal.readthedocs.io/en/latest/notes/introduction.html#epidemiological-forecasting
 
 # ========== IMPORTS ==========
-import math
 import torch
 import torch.nn as nn
 from torch.nn import Linear

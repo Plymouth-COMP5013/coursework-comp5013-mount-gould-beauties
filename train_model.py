@@ -1,12 +1,11 @@
 # ========== IMPORTS ==========
-from utilities.preprocessing import load_dataset_for_stgcn, split_dataset, train_test_subset
-from stgcn import train_model, evaluate_model
+from utilities.preprocessing import load_dataset_for_stgcn, train_test_subset
 from stgcn import STGCN
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import time
 from tqdm import tqdm  # optional progress bar
-
 
 
 # ========== DATA MANAGEMENT ==========
@@ -45,3 +44,32 @@ for epoch in tqdm(range(num_epochs), desc="Training Epochs"):
 	optimizer.step()
 	optimizer.zero_grad()
 	print(f"Epoch {epoch + 1}/{num_epochs}, Loss: {loss.item():.4f}")
+
+
+# ========== EVALUATION ==========
+model.eval()
+
+total_loss = 0
+with torch.no_grad():
+	for time, snapshot in tqdm(enumerate(test_subset), desc="Testing Batches", leave=False):
+		x = snapshot.x.T.unsqueeze(0).unsqueeze(-1)
+		y_hat = model(x, snapshot.edge_index, snapshot.edge_weight)
+		y_hat_single = y_hat[:, 0, :, :].squeeze()
+		target = snapshot.y.view(-1)
+
+		loss = loss + torch.mean((y_hat_single - target) ** 2)
+	total_loss += loss.item()
+	total_loss = total_loss / (time + 1)
+	print(f"Test Loss: {total_loss:.4f}")
+
+
+# ========== SAVE MODEL ==========
+
+# Generate a Unix timestamp for the model filename
+timestamp = int(time.time())
+
+# Save the model state dictionary
+torch.save(model.state_dict(), f"stgcn_model_{timestamp}.pth")
+
+# Save the model architecture
+torch.save(model, f"stgcn_model_architecture_{timestamp}.pth")
