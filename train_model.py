@@ -68,7 +68,10 @@ with torch.no_grad():
 # ========== SAVE MODEL ==========
 
 # Generate a Unix timestamp for the model filename
-timestamp = int(time.time())
+unix_timestamp = time.time()
+
+# Convert the timestamp to a human-readable format
+timestamp = time.strftime("%Y%m%d-%H%M%S", time.localtime(unix_timestamp))
 
 # Save the model state dictionary
 torch.save(model.state_dict(), f"stgcn_model_{timestamp}.pth")
