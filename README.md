@@ -19,3 +19,15 @@ The team randomly selected a medium and a large scale among the District 7 of Ca
 `PeMSD7_V_288.csv` is the traffic speed data of the 288 sensors in the PeMSD7 dataset. With 44 days of data, the dataset contains 44 x 24 x 12 = 12,672 samples. Each sample is a 288-dimensional vector, where each element represents the traffic speed of a sensor at a given time. This matrix makes up the temporal element of the STGCN model, and can serve as a feature matrix for the graph convolutional layers. Note that each row is a new record and each column is a sensor in the network.
 
 For version control, the data files are compressed into a zip file. You will need to unzip those files with a tool of your choice (e.g. `unzip` on Linux or `7-Zip` on Windows) before running the code. Keep all data files are located in the `dataset` directory.
+
+### Test Data Import
+
+In order to test that the data has been unzipped and is able to be used correctly, run `test.py`. You should see the following output in your terminal:
+
+```bash
+Training set size: 10128
+Testing set size: 1266
+Validation set size: 1266
+<class 'torch_geometric.data.data.Data'>
+Data(x=[228, 12], edge_index=[2, 51722], edge_attr=[51722], y=[228, 1])
+```
