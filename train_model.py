@@ -5,19 +5,19 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import time
-from tqdm import tqdm  # optional progress bar
+from tqdm import tqdm
 
 
 # ========== DATA MANAGEMENT ==========
 dataset = load_dataset_for_stgcn(window_size=12)
-train_subet, test_subset = train_test_subset(dataset, subset_ratio=0.05)
+train_subet, test_subset = train_test_subset(dataset, subset_ratio=0.04)
 
 
 # ========== SETUP ==========
 model = STGCN(in_channels=1, hidden_channels=64, out_channels=1, num_nodes=228)
 optimizer = optim.Adam(model.parameters(), lr=0.001)
 loss_fn = nn.MSELoss()
-num_epochs = 10
+num_epochs = 5
 
 
 # ========== TRAINING LOOP ==========
@@ -39,6 +39,7 @@ for epoch in tqdm(range(num_epochs), desc="Training Epochs"):
 		target = snapshot.y.view(-1)                 # shape: [228]
 
 		loss = loss + torch.mean((y_hat_single - target) ** 2)
+
 	loss = loss / (time + 1)
 	loss.backward()
 	optimizer.step()
@@ -58,6 +59,7 @@ with torch.no_grad():
 		target = snapshot.y.view(-1)
 
 		loss = loss + torch.mean((y_hat_single - target) ** 2)
+
 	total_loss += loss.item()
 	total_loss = total_loss / (time + 1)
 	print(f"Test Loss: {total_loss:.4f}")
