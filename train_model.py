@@ -9,9 +9,17 @@ import time
 from tqdm import tqdm
 
 # ========== OPTIONS ==========
-SUBSET_RATIO = 0.03  # Ratio of the dataset to use for the subset to test on. Example: 0.03 = 3% of the dataset
-LEARNING_RATE = 0.001  # Learning rate for the optimizer. A good value is usually between 0.001 and 0.01
-HIDDEN_CHANNELS = 16  # Number of hidden channels in the model. A good value is usually between 16 and 64. Higher numbers can lead to overfitting or longer training times.
+# Ratio of the dataset to use for the subset to test on. Example: 0.03 = 3% of the dataset
+SUBSET_RATIO = 0.1
+
+# Learning rate for the optimizer. A good value is usually between 0.001 and 0.01
+LEARNING_RATE = 0.001
+
+# Number of hidden channels in the model. A good value is usually between 16 and 64. Higher numbers can lead to overfitting or longer training times.
+HIDDEN_CHANNELS = 32
+
+# Number of epochs to train the model. A good value is usually between 10 and 50, or lower for quick tests.
+EPOCHS = 15
 
 
 # ========== DATA MANAGEMENT ==========
@@ -23,7 +31,7 @@ train_subet, test_subset = train_test_subset(dataset, subset_ratio=SUBSET_RATIO)
 model = STGCN(in_channels=1, hidden_channels=HIDDEN_CHANNELS, out_channels=1, num_nodes=228)
 optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
 loss_fn = nn.MSELoss()
-num_epochs = 4
+num_epochs = EPOCHS
 
 
 # ========== TRAINING LOOP ==========
@@ -56,7 +64,7 @@ for epoch in tqdm(range(num_epochs), desc="Training Epochs"):
     training_losses.append(loss.item())
     print(f"Epoch {epoch + 1}/{num_epochs}, Loss: {loss.item():.4f}")
 
-plot_and_save_loss(training_losses)
+plot_and_save_loss(training_losses, 'graphs', num_nodes=228, hidden_channels=HIDDEN_CHANNELS, learning_rate=LEARNING_RATE, subset_ratio=SUBSET_RATIO)
 
 
 # ========== EVALUATION ==========
@@ -83,7 +91,7 @@ with torch.no_grad():
 unix_timestamp = time.time()
 
 # Convert the timestamp to a human-readable format
-timestamp = time.strftime("%Y%m%d-%H%M%S", time.localtime(unix_timestamp))
+timestamp = time.strftime("%d-%m-%Y-%H-%M", time.localtime(unix_timestamp))
 
 # Save the model state dictionary
 torch.save(model.state_dict(), f"stgcn_model_{timestamp}.pth")
