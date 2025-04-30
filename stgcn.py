@@ -39,12 +39,11 @@ class STGCN(torch.nn.Module):
         self.stconv2 = STConv(num_nodes, hidden_channels, hidden_channels, hidden_channels, kernel_size, K)
         self.final_linear = Linear(hidden_channels, out_channels)
 
-    def forward(self, x, edge_index, edge_weight=None):
+    def forward(self, x, edge_index, edge_weight):
         x = self.stconv1(x, edge_index, edge_weight)
         x = F.relu(x)
         x = self.stconv2(x, edge_index, edge_weight)
         x = F.relu(x)
-        x = x[:, -1]  # Take the last time step
         x = self.final_linear(x)
         return x
 

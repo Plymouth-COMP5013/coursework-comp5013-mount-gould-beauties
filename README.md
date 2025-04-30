@@ -14,9 +14,9 @@ The STGCN model we're building from was conceived by this research team in 2018.
 
 The team randomly selected a medium and a large scale among the District 7 of California containing 228 and 1,026 stations, labelled as PeMSD7(M) and PeMSD7(L), respectively, as data sources. The time range of PeMSD7 dataset is in the weekdays of May and June of 2012. Overall, there are 44 days of historical traffic speed data captured.
 
-`PeMSD7_W_288.csv` is the adjacency matrix of the 288 sensors in the PeMSD7 dataset. The adjacency matrix is a 288x288 matrix, where each element represents the distance between two sensors. This matrix makes up the spatial element of the STGCN model, and can serve as a weighting matrix for the graph convolutional layers.
+`PeMSD7_W_228.csv` is the adjacency matrix of the 228 sensors in the PeMSD7 dataset. The adjacency matrix is a 228x228 matrix, where each element represents the distance between two sensors. This matrix makes up the spatial element of the STGCN model, and can serve as a weighting matrix for the graph convolutional layers.
 
-`PeMSD7_V_288.csv` is the traffic speed data of the 288 sensors in the PeMSD7 dataset. With 44 days of data, the dataset contains 44 x 24 x 12 = 12,672 samples. Each sample is a 288-dimensional vector, where each element represents the traffic speed of a sensor at a given time. This matrix makes up the temporal element of the STGCN model, and can serve as a feature matrix for the graph convolutional layers. Note that each row is a new record and each column is a sensor in the network.
+`PeMSD7_V_228.csv` is the traffic speed data of the 228 sensors in the PeMSD7 dataset. With 44 days of data, the dataset contains 44 x 24 x 12 = 12,672 samples. Each sample is a 228-dimensional vector, where each element represents the traffic speed of a sensor at a given time. This matrix makes up the temporal element of the STGCN model, and can serve as a feature matrix for the graph convolutional layers. Note that each row is a new record and each column is a sensor in the network.
 
 For version control, the data files are compressed into a zip file. You will need to unzip those files with a tool of your choice (e.g. `unzip` on Linux or `7-Zip` on Windows) before running the code. Keep all data files are located in the `dataset` directory.
 
