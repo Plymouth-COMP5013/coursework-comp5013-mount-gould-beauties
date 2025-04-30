@@ -10,14 +10,14 @@ from tqdm import tqdm
 
 # ========== DATA MANAGEMENT ==========
 dataset = load_dataset_for_stgcn(window_size=12)
-train_subet, test_subset = train_test_subset(dataset, subset_ratio=0.04)
+train_subet, test_subset = train_test_subset(dataset, subset_ratio=0.25)
 
 
 # ========== SETUP ==========
 model = STGCN(in_channels=1, hidden_channels=64, out_channels=1, num_nodes=228)
 optimizer = optim.Adam(model.parameters(), lr=0.001)
 loss_fn = nn.MSELoss()
-num_epochs = 5
+num_epochs = 30
 
 
 # ========== TRAINING LOOP ==========
