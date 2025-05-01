@@ -10,16 +10,16 @@ from tqdm import tqdm
 
 # ========== OPTIONS ==========
 # Ratio of the dataset to use for the subset to test on. Example: 0.03 = 3% of the dataset
-SUBSET_RATIO = 0.1
+SUBSET_RATIO = 0.5
 
 # Learning rate for the optimizer. A good value is usually between 0.001 and 0.01
 LEARNING_RATE = 0.001
 
 # Number of hidden channels in the model. A good value is usually between 16 and 64. Higher numbers can lead to overfitting or longer training times.
-HIDDEN_CHANNELS = 32
+HIDDEN_CHANNELS = 64
 
 # Number of epochs to train the model. A good value is usually between 10 and 50, or lower for quick tests.
-EPOCHS = 15
+EPOCHS = 20
 
 
 # ========== DATA MANAGEMENT ==========
