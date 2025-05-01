@@ -5,14 +5,14 @@ NUM_HEADS = 8
 
 
 #Spectral Graph Convolution
-
-kernel = tf.compat.v1.get_collection('graph_kernel')[0]  # [N, Ks*N]
+def gconv(x, theta, Ks, c_in, c_out):
+    kernel = tf.compat.v1.get_collection('graph_kernel')[0]  # [N, Ks*N]
     n = tf.shape(kernel)[0]
     x_tmp = tf.reshape(tf.transpose(x, [0,2,1]), [-1, n])            # [B*c_in, N]
     x_mul = tf.reshape(tf.matmul(x_tmp, kernel), [-1, c_in, Ks, n])  # [B, c_in, Ks, N]
     x_ker = tf.reshape(tf.transpose(x_mul, [0,3,1,2]), [-1, c_in*Ks])
     x_gconv = tf.reshape(tf.matmul(x_ker, theta), [-1, n, c_out])    # [B, N, c_out] 
-    #return x_gconv
+    
 
 #Layer Normalization
 def layer_norm(x, scope):
@@ -24,7 +24,7 @@ def layer_norm(x, scope):
         x_norm = (x - mu) / tf.sqrt(sigma + 1e-6)
         return gamma * x_norm + beta
 
-#Temporal Convolution (GLU or other activations)
+#Temporal Convolution 
 def temporal_conv_layer(x, Kt, c_in, c_out, act_func='relu'):
     _, T, N, _ = x.get_shape().as_list()
 
