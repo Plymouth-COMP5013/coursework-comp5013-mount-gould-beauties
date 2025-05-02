@@ -38,8 +38,8 @@ def plot_and_save_loss(losses, folder='graphs', num_nodes=228, hidden_channels=1
     plt.xlabel("Epoch")
     plt.ylabel("Loss")
     plt.grid(True)
-    
-	# Convert subset ratio to percentage
+    plt.ylim(0, 0.3)
+	  # Convert subset ratio to percentage
     subset_ratio_percentage = subset_ratio * 100
 
     # Add key parameters as text at the bottom
