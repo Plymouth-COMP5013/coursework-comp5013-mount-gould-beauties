@@ -7,22 +7,29 @@ import torch.nn as nn
 import torch.optim as optim
 from datetime import datetime
 from tqdm import tqdm
+from torch.optim.lr_scheduler import StepLR
 
 # ========== OPTIONS ==========
 # Ratio of the dataset to use for the subset to test on. Example: 0.03 = 3% of the dataset
-SUBSET_RATIO = 0.12
+SUBSET_RATIO = 0.2
 
 # Learning rate for the optimizer. A good value is usually between 0.001 and 0.01
-LEARNING_RATE = 0.003
+LEARNING_RATE = 0.03
 
 # Number of hidden channels in the model. A good value is usually between 16 and 64. Higher numbers can lead to overfitting or longer training times.
-HIDDEN_CHANNELS = 32
+HIDDEN_CHANNELS = 64
 
 # Number of epochs to train the model. A good value is usually between 10 and 50, or lower for quick tests.
-EPOCHS = 60
+EPOCHS = 75
 
 # Nuber of nodes in the dataset. This is usually fixed for a given dataset. Currently I'm only supporting 288 nodes.
 NUM_NODES = 228
+
+# Learning rate decay step size. A good value is usually between 5 and 10.
+STEP_SIZE = 5
+
+# Gamme for learning rate decay. A good value is usually between 0.1 and 0.9.
+GAMMA = 0.7
 
 
 # ========== DATA MANAGEMENT ==========
@@ -33,6 +40,7 @@ train_subet, test_subset = train_test_subset(dataset, subset_ratio=SUBSET_RATIO)
 # ========== SETUP ==========
 model = STGCN(in_channels=1, hidden_channels=HIDDEN_CHANNELS, out_channels=1, num_nodes=NUM_NODES)
 optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
+scheduler = StepLR(optimizer, step_size=STEP_SIZE, gamma=GAMMA)
 loss_fn = nn.MSELoss()
 num_epochs = EPOCHS
 
@@ -91,6 +99,7 @@ for epoch in tqdm(range(num_epochs), desc="Training Epochs"):
     loss.backward()
     optimizer.step()
     optimizer.zero_grad()
+    scheduler.step()
     
     training_losses.append(loss.item())
 
@@ -113,7 +122,16 @@ for epoch in tqdm(range(num_epochs), desc="Training Epochs"):
     for i in range(len(sampled_predictions)):
         print(f"Sample {i + 1}: Predicted: {sampled_predictions[i].item():.4f}, Target: {sampled_targets[i].item():.4f}")
 
-plot_and_save_loss(training_losses, 'graphs', num_nodes=228, hidden_channels=HIDDEN_CHANNELS, learning_rate=LEARNING_RATE, subset_ratio=SUBSET_RATIO)
+plot_and_save_loss(
+    training_losses,
+    'graphs',
+    num_nodes=228,
+    hidden_channels=HIDDEN_CHANNELS,
+    learning_rate=LEARNING_RATE,
+    subset_ratio=SUBSET_RATIO,
+    decay=GAMMA,
+    decay_step=STEP_SIZE
+)
 
 
 # ========== EVALUATION ==========

@@ -9,7 +9,7 @@ from datetime import datetime
 
 
 # # ========== PLOTTING FUNCTIONS ==========
-def plot_and_save_loss(losses, folder='graphs', num_nodes=228, hidden_channels=16, learning_rate=0.001, subset_ratio=0.03):
+def plot_and_save_loss(losses, folder='graphs', num_nodes=228, hidden_channels=16, learning_rate=0.001, subset_ratio=0.03, decay=0.7, decay_step=5):
     """
     Plots training loss over epochs, then saves the plot to a specified folder.
     
@@ -20,7 +20,9 @@ def plot_and_save_loss(losses, folder='graphs', num_nodes=228, hidden_channels=1
 		hidden_channels (int): Number of hidden channels in the model. Default is 16.
 		learning_rate (float): Learning rate used in training. Default is 0.001.
 		subset_ratio (float): Ratio of the dataset used for training. Default is 0.03.
-        
+    decay (float): Learning rate decay factor. Default is 0.7.
+    decay_step (int): Number of epochs after which to decay the learning rate. Default is 5.
+      
     Returns:
 		None
     """
@@ -47,7 +49,9 @@ def plot_and_save_loss(losses, folder='graphs', num_nodes=228, hidden_channels=1
         f"Number of Nodes: {num_nodes}    "
         f"Hidden Channels: {hidden_channels}    "
         f"Learning Rate: {learning_rate}    "
-        f"Subset Ratio: {subset_ratio_percentage}%"
+        f"Subset Ratio: {subset_ratio_percentage}%   "
+        f"Decay: {decay}    "
+        f"Decay Step: {decay_step}    "
     )
     plt.figtext(0.5, 0.01, text_str, wrap=True, horizontalalignment='center', fontsize=9)
 
