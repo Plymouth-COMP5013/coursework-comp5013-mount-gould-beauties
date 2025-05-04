@@ -9,18 +9,19 @@ from datetime import datetime
 from tqdm import tqdm
 from torch.optim.lr_scheduler import StepLR
 
+
 # ========== OPTIONS ==========
 # Ratio of the dataset to use for the subset to test on. Example: 0.03 = 3% of the dataset
-SUBSET_RATIO = 0.2
+SUBSET_RATIO = 0.01
 
 # Learning rate for the optimizer. A good value is usually between 0.001 and 0.01
-LEARNING_RATE = 0.03
+LEARNING_RATE = 0.004
 
 # Number of hidden channels in the model. A good value is usually between 16 and 64. Higher numbers can lead to overfitting or longer training times.
-HIDDEN_CHANNELS = 64
+HIDDEN_CHANNELS = 32
 
 # Number of epochs to train the model. A good value is usually between 10 and 50, or lower for quick tests.
-EPOCHS = 75
+EPOCHS = 3
 
 # Nuber of nodes in the dataset. This is usually fixed for a given dataset. Currently I'm only supporting 288 nodes.
 NUM_NODES = 228
@@ -28,8 +29,17 @@ NUM_NODES = 228
 # Learning rate decay step size. A good value is usually between 5 and 10.
 STEP_SIZE = 5
 
-# Gamme for learning rate decay. A good value is usually between 0.1 and 0.9.
+# Gamme for learning rate decay. A good value is usually between 0.3 and 0.9.
 GAMMA = 0.7
+
+# Sub-folder for the graphs. If None is provided, the graphs will be saved in the highest level of the 'graphs' folder.
+GRAPH_SUBFOLDER = "series_1"
+
+# Test number for the experiment. Can be used to identify the test run and can be a string.
+TEST_NUMBER = "1.0.3"
+
+# Extended description to be placed at the bottom of the plot.
+EXTENDED_DESC = 'Another small test to get this graph layout right.'
 
 
 # ========== DATA MANAGEMENT ==========
@@ -124,14 +134,16 @@ for epoch in tqdm(range(num_epochs), desc="Training Epochs"):
 
 plot_and_save_loss(
     training_losses,
-    'graphs',
-    num_nodes=228,
+    num_nodes=NUM_NODES,
     hidden_channels=HIDDEN_CHANNELS,
     learning_rate=LEARNING_RATE,
     subset_ratio=SUBSET_RATIO,
     decay=GAMMA,
-    decay_step=STEP_SIZE
-)
+    decay_step=STEP_SIZE,
+    test_number=TEST_NUMBER,
+    extended_desc=EXTENDED_DESC,
+    folder='graphs',
+    subfolder=GRAPH_SUBFOLDER)
 
 
 # ========== EVALUATION ==========

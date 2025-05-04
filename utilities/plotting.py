@@ -9,33 +9,36 @@ from datetime import datetime
 
 
 # # ========== PLOTTING FUNCTIONS ==========
-def plot_and_save_loss(losses, folder='graphs', num_nodes=228, hidden_channels=16, learning_rate=0.001, subset_ratio=0.03, decay=0.7, decay_step=5):
+def plot_and_save_loss(losses, num_nodes, hidden_channels, learning_rate, subset_ratio, decay, decay_step, test_number, extended_desc, folder='graphs', subfolder=None):
     """
     Plots training loss over epochs, then saves the plot to a specified folder.
     
     Args:
-		losses (list): List of loss values for each epoch.
-		folder (str): Folder to save the plot. Default is 'graphs'.
-		num_nodes (int): Number of nodes in the graph. Default is 228.
-		hidden_channels (int): Number of hidden channels in the model. Default is 16.
-		learning_rate (float): Learning rate used in training. Default is 0.001.
-		subset_ratio (float): Ratio of the dataset used for training. Default is 0.03.
-    decay (float): Learning rate decay factor. Default is 0.7.
-    decay_step (int): Number of epochs after which to decay the learning rate. Default is 5.
-      
-    Returns:
-		None
+        losses (list): List of loss values for each epoch.
+        num_nodes (int): Number of nodes in the graph.
+        hidden_channels (int): Number of hidden channels in the model.
+        learning_rate (float): Learning rate used in training.
+        subset_ratio (float): Ratio of the dataset used for training.
+        decay (float): Decay rate for the learning rate.
+        decay_step (int): Step size for the learning rate decay.
+        test_number (str): Test number for the experiment. Can be used to identify the test run and can be a string.
+        extended_desc (str): Extended description to be placed at the bottom of the plot.
+        folder (str): Folder where the plot will be saved. Defaults to 'graphs'.
     """
     if not os.path.exists(folder):
         os.makedirs(folder)
+    if subfolder:
+        folder = os.path.join(folder, subfolder)
+        if not os.path.exists(folder):
+            os.makedirs(folder)
 
-    timestamp_str = datetime.now().strftime("%d-%m-%Y at %H:%M:%S")
+    timestamp_str = datetime.now().strftime("%d-%m-%Y at %H:%M")
     filename_time = datetime.now().strftime("%d-%m-%Y-%H-%M")
 
     # Set up the plot
-    plt.figure(figsize=(10, 6))
+    plt.figure(figsize=(12, 7))
     plt.plot(range(1, len(losses) + 1), losses, marker='o')
-    plt.title("Training Loss")
+    plt.title(f"STGCN Training Loss (Test {test_number})")
     plt.suptitle(f"Generated on {timestamp_str}", fontsize=10)
     plt.xlabel("Epoch")
     plt.ylabel("Loss")
@@ -53,7 +56,12 @@ def plot_and_save_loss(losses, folder='graphs', num_nodes=228, hidden_channels=1
         f"Decay: {decay}    "
         f"Decay Step: {decay_step}    "
     )
-    plt.figtext(0.5, 0.01, text_str, wrap=True, horizontalalignment='center', fontsize=9)
+    plt.figtext(0.5, -0.05, text_str, wrap=True, horizontalalignment='center', fontsize=9, color='gray')
+
+    # Add extended description
+    plt.figtext(0.5, -0.02, extended_desc, wrap=True, horizontalalignment='center', fontsize=8)
+    plt.subplots_adjust(bottom=0.1)
+    plt.tight_layout()
 
     save_path = os.path.join(folder, f"training_loss_{filename_time}.png")
     plt.savefig(save_path, bbox_inches="tight")
