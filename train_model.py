@@ -36,10 +36,14 @@ GAMMA = 0.7
 GRAPH_SUBFOLDER = "series_1"
 
 # Test number for the experiment. Can be used to identify the test run and can be a string.
-TEST_NUMBER = "1.0.3"
+TEST_NUMBER = "1.0"
 
 # Extended description to be placed at the bottom of the plot.
-EXTENDED_DESC = 'Another small test to get this graph layout right.'
+EXTENDED_DESC = "Experiment, to find out if I've introduced a leaked semaphore bug into the code."
+
+# Model saving options; would we like to save the model's architecture and state dictionary?
+SAVE_ARCHITECTURE = False
+SAVE_STATE_DICT = False
 
 
 # ========== DATA MANAGEMENT ==========
@@ -166,16 +170,19 @@ with torch.no_grad():
 
 
 # ========== SAVE MODEL ==========
-timestamp = datetime.now().strftime("%d-%m-%Y-%H-%M")
+if SAVE_ARCHITECTURE or SAVE_STATE_DICT:
+    timestamp = datetime.now().strftime("%d-%m-%Y-%H-%M")
 
-save_data = {
-    'model_state_dict': model.state_dict(),
-    'min_val': min_value,
-    'max_val': max_value
-}
+    save_data = {
+        'model_state_dict': model.state_dict(),
+        'min_val': min_value,
+        'max_val': max_value
+    }
 
-# Save the model state dictionary and normalisation values
-torch.save(save_data, f"stgcn_model_{timestamp}.pth")
+    # Save the model state dictionary and normalisation values
+    if SAVE_STATE_DICT:
+        torch.save(save_data, f"stgcn_model_state_dict_{timestamp}.pth")
 
-# Save the model architecture
-torch.save(model, f"stgcn_model_architecture_{timestamp}.pth")
+    # Save the model architecture
+    if SAVE_ARCHITECTURE:
+        torch.save(model, f"stgcn_model_architecture_{timestamp}.pth")
