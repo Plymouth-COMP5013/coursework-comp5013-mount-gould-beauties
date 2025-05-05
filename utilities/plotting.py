@@ -42,7 +42,7 @@ def plot_and_save_loss(losses, num_nodes, hidden_channels, learning_rate, subset
     plt.title(f"STGCN Training Loss (Test {test_number})")
     plt.suptitle(f"Generated on {timestamp_str}", fontsize=10)
     plt.xlabel("Epoch")
-    plt.ylabel("Loss")
+    plt.ylabel("Root Mean Squared Error (RMSE)")
     plt.grid(True)
     plt.ylim(0, 0.3)
 	  # Convert subset ratio to percentage

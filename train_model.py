@@ -13,22 +13,22 @@ from early_stopping import EarlyStopping
 
 # ========== OPTIONS ==========
 # Ratio of the dataset to use for the subset to test on. Example: 0.03 = 3% of the dataset
-SUBSET_RATIO = 0.3
+SUBSET_RATIO = 0.16
 
 # Learning rate for the optimizer. A good value is usually between 0.001 and 0.01
 LEARNING_RATE = 0.004
 
 # Number of hidden channels in the model. A good value is usually between 16 and 64. Higher numbers can lead to overfitting or longer training times.
-HIDDEN_CHANNELS = 32
+HIDDEN_CHANNELS = 64
 
 # Number of epochs to train the model. A good value is usually between 10 and 50, or lower for quick tests.
-EPOCHS = 50
+EPOCHS = 20
 
 # Nuber of nodes in the dataset. This is usually fixed for a given dataset. Currently I'm only supporting 288 nodes.
 NUM_NODES = 228
 
-# Learning rate decay step size. A good value is usually between 5 and 10.
-STEP_SIZE = 2
+# Learning rate decay step size. A good value is usually between 3 and 8.
+STEP_SIZE = 3
 
 # Gamme for learning rate decay. A good value is usually between 0.3 and 0.9.
 GAMMA = 0.7
@@ -37,10 +37,10 @@ GAMMA = 0.7
 GRAPH_SUBFOLDER = "series_1"
 
 # Test number for the experiment. Can be used to identify the test run and can be a string.
-TEST_NUMBER = "1.1"
+TEST_NUMBER = "1.2"
 
 # Extended description to be placed at the bottom of the plot.
-EXTENDED_DESC = "Test on 30 percent of the dataset with the new early stopping mechanic."
+EXTENDED_DESC = "First test running the model with RMSE loss function."
 
 # Model saving options; would we like to save the model's architecture and state dictionary?
 SAVE_ARCHITECTURE = True
@@ -88,7 +88,8 @@ model.train()
 training_losses = []
 
 for epoch in tqdm(range(num_epochs), desc="Training Epochs"):
-    loss = 0
+    mse_loss = 0
+    rmse_loss = 0
     all_predictions = []
     all_targets = []
     for time_step, snapshot in tqdm(enumerate(train_subet), desc="Training Batches", leave=False):
@@ -105,21 +106,28 @@ for epoch in tqdm(range(num_epochs), desc="Training Epochs"):
         y_hat_single = y_hat[:, 0, :, :].squeeze()   # shape: [228]
         target = (snapshot.y.view(-1) - min_value) / (max_value - min_value)  # Normalise target via min-max scaling
 
-        loss = loss + torch.mean((y_hat_single - target) ** 2)
+        # Compute the loss
+        mse = torch.mean((y_hat_single - target) ** 2)
+        rmse = torch.sqrt(mse)
+
+        # Add the loss to the total loss
+        mse_loss = mse_loss + mse
+        rmse_loss = rmse_loss + rmse
 
         # Collect predictions and targets for sampling later
         all_predictions.append(y_hat_single.detach())
         all_targets.append(target.detach())
 
-    loss = loss / (time_step + 1)
-    loss.backward()
+    rmse_loss = rmse_loss / (time_step + 1)
+    rmse_loss.backward()
     optimizer.step()
     optimizer.zero_grad()
     scheduler.step()
 
     # Check for early stopping by using the test subset for validation
     model.eval()
-    val_loss = 0
+    mse_val_loss = 0
+    rmse_val_loss = 0
     with torch.no_grad():
         for time_step, snapshot in enumerate(test_subset):
             x_val = snapshot.x.T.unsqueeze(0).unsqueeze(-1)
@@ -128,20 +136,26 @@ for epoch in tqdm(range(num_epochs), desc="Training Epochs"):
             y_val_hat_single = y_val_hat[:, 0, :, :].squeeze()
             y_val_target = (snapshot.y.view(-1) - min_value) / (max_value - min_value)
 
-            val_loss += torch.mean((y_val_hat_single - y_val_target) ** 2)
+            # Compute the validation loss
+            mse_val = torch.mean((y_val_hat_single - y_val_target) ** 2)
+            rmse_val = torch.sqrt(mse_val)
 
-    val_loss = val_loss / (time_step + 1)
-    print(f"Epoch {epoch + 1}/{num_epochs}, Validation Loss: {val_loss.item():.4f}")
+            # Add the validation loss to the total validation loss
+            mse_val_loss = mse_val_loss + mse_val
+            rmse_val_loss = rmse_val_loss + rmse_val
+
+    rmse_val_loss = rmse_val_loss / (time_step + 1)
+    print(f"Epoch {epoch + 1}/{num_epochs}, Validation Loss: {rmse_val_loss.item():.4f}")
 
     # Check for early stopping
-    if early_stopping.check(val_loss.item()):
+    if early_stopping.check(rmse_val_loss.item()):
         print(f"Early stopping at epoch {epoch + 1}")
         break
 
     # If not stopping, continue training
     model.train()
         
-    training_losses.append(loss.item())
+    training_losses.append(rmse_loss.item())
 
     # Concatenate all predictions and targets
     all_predictions = torch.cat(all_predictions)
@@ -152,7 +166,7 @@ for epoch in tqdm(range(num_epochs), desc="Training Epochs"):
     sampled_predictions = all_predictions[sample_indices]
     sampled_targets = all_targets[sample_indices]
 
-    print(f"Epoch {epoch + 1}/{num_epochs}, Loss: {loss.item():.4f}")
+    print(f"Epoch {epoch + 1}/{num_epochs}, Loss: {rmse_loss.item():.4f}")
 
     # Denormalise the sampled predictions and targets
     sampled_predictions = sampled_predictions * (max_value - min_value) + min_value
@@ -180,7 +194,8 @@ plot_and_save_loss(
 # ========== EVALUATION ==========
 model.eval()
 
-total_loss = 0
+mse_loss = 0
+rmse_loss = 0
 with torch.no_grad():
     for time_step, snapshot in tqdm(enumerate(test_subset), desc="Testing Batches", leave=False):
         x = snapshot.x.T.unsqueeze(0).unsqueeze(-1)
@@ -189,11 +204,16 @@ with torch.no_grad():
         y_hat_single = y_hat[:, 0, :, :].squeeze()
         target = (snapshot.y.view(-1) - min_value) / (max_value - min_value) # Normalise target via min-max scaling
 
-        loss = loss + torch.mean((y_hat_single - target) ** 2)
+        # Compute the loss
+        mse = torch.mean((y_hat_single - target) ** 2)
+        rmse = torch.sqrt(mse)
 
-    total_loss += loss.item()
-    total_loss = total_loss / (time_step + 1)
-    print(f"Test Loss: {total_loss:.4f}")
+        # Add the loss to the total loss
+        mse_loss = mse_loss + mse
+        rmse_loss = rmse_loss + rmse
+
+    rmse_loss = rmse_loss.item() / (time_step + 1)
+    print(f"Test Loss: {rmse_loss:.4f}")
 
 
 # ========== SAVE MODEL ==========
