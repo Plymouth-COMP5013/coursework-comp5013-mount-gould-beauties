@@ -170,6 +170,7 @@ plot_and_save_loss(
     subset_ratio=SUBSET_RATIO,
     decay=GAMMA,
     decay_step=STEP_SIZE,
+    intended_epochs=EPOCHS,
     test_number=TEST_NUMBER,
     extended_desc=EXTENDED_DESC,
     folder='graphs',

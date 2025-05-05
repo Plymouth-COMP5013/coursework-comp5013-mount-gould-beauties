@@ -9,7 +9,7 @@ from datetime import datetime
 
 
 # # ========== PLOTTING FUNCTIONS ==========
-def plot_and_save_loss(losses, num_nodes, hidden_channels, learning_rate, subset_ratio, decay, decay_step, test_number, extended_desc, folder = 'graphs', subfolder = None):
+def plot_and_save_loss(losses, num_nodes, hidden_channels, learning_rate, subset_ratio, decay, decay_step, intended_epochs, test_number, extended_desc, folder = 'graphs', subfolder = None):
     """
     Plots training loss over epochs, then saves the plot to a specified folder.
     
@@ -21,6 +21,7 @@ def plot_and_save_loss(losses, num_nodes, hidden_channels, learning_rate, subset
         subset_ratio (float): Ratio of the dataset used for training.
         decay (float): Decay rate for the learning rate.
         decay_step (int): Step size for the learning rate decay.
+        intended_epochs (int): Intended number of epochs for training, which may have been unfulfilled due to early stopping.
         test_number (str): Test number for the experiment. Can be used to identify the test run and can be a string.
         extended_desc (str): Extended description to be placed at the bottom of the plot.
         folder (str): Folder where the plot will be saved. Defaults to 'graphs'.
@@ -55,6 +56,9 @@ def plot_and_save_loss(losses, num_nodes, hidden_channels, learning_rate, subset
         f"Subset Ratio: {subset_ratio_percentage}%   "
         f"Decay: {decay}    "
         f"Decay Step: {decay_step}    "
+        f"Intended Epochs: {intended_epochs}    "
+        f"Stopped at Epoch: {len(losses)}    "
+        f"Final Loss: {losses[-1]:.4f}"
     )
     plt.figtext(0.5, -0.05, text_str, wrap=True, horizontalalignment='center', fontsize=9, color='gray')
 
