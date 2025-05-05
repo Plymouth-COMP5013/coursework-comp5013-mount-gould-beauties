@@ -31,7 +31,7 @@ class STGCN(torch.nn.Module):
     """
 
 
-    def __init__(self, in_channels, hidden_channels, out_channels, num_nodes, kernel_size=3, K=3):
+    def __init__(self, in_channels, hidden_channels, out_channels, num_nodes, kernel_size = 3, K = 3):
         super(STGCN, self).__init__()
 
         self.stconv1 = STConv(num_nodes, in_channels, hidden_channels, hidden_channels, kernel_size, K)

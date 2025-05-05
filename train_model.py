@@ -8,11 +8,12 @@ import torch.optim as optim
 from datetime import datetime
 from tqdm import tqdm
 from torch.optim.lr_scheduler import StepLR
+from early_stopping import EarlyStopping
 
 
 # ========== OPTIONS ==========
 # Ratio of the dataset to use for the subset to test on. Example: 0.03 = 3% of the dataset
-SUBSET_RATIO = 0.01
+SUBSET_RATIO = 0.3
 
 # Learning rate for the optimizer. A good value is usually between 0.001 and 0.01
 LEARNING_RATE = 0.004
@@ -21,13 +22,13 @@ LEARNING_RATE = 0.004
 HIDDEN_CHANNELS = 32
 
 # Number of epochs to train the model. A good value is usually between 10 and 50, or lower for quick tests.
-EPOCHS = 3
+EPOCHS = 50
 
 # Nuber of nodes in the dataset. This is usually fixed for a given dataset. Currently I'm only supporting 288 nodes.
 NUM_NODES = 228
 
 # Learning rate decay step size. A good value is usually between 5 and 10.
-STEP_SIZE = 5
+STEP_SIZE = 2
 
 # Gamme for learning rate decay. A good value is usually between 0.3 and 0.9.
 GAMMA = 0.7
@@ -36,14 +37,14 @@ GAMMA = 0.7
 GRAPH_SUBFOLDER = "series_1"
 
 # Test number for the experiment. Can be used to identify the test run and can be a string.
-TEST_NUMBER = "1.0"
+TEST_NUMBER = "1.1"
 
 # Extended description to be placed at the bottom of the plot.
-EXTENDED_DESC = "Experiment, to find out if I've introduced a leaked semaphore bug into the code."
+EXTENDED_DESC = "Test on 30 percent of the dataset with the new early stopping mechanic."
 
 # Model saving options; would we like to save the model's architecture and state dictionary?
-SAVE_ARCHITECTURE = False
-SAVE_STATE_DICT = False
+SAVE_ARCHITECTURE = True
+SAVE_STATE_DICT = True
 
 
 # ========== DATA MANAGEMENT ==========
@@ -57,6 +58,7 @@ optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
 scheduler = StepLR(optimizer, step_size=STEP_SIZE, gamma=GAMMA)
 loss_fn = nn.MSELoss()
 num_epochs = EPOCHS
+early_stopping = EarlyStopping(patience=4, min_delta=0.01)
 
 
 # ========== COMPUTE NORMALISATION Values ==========
@@ -114,7 +116,31 @@ for epoch in tqdm(range(num_epochs), desc="Training Epochs"):
     optimizer.step()
     optimizer.zero_grad()
     scheduler.step()
-    
+
+    # Check for early stopping by using the test subset for validation
+    model.eval()
+    val_loss = 0
+    with torch.no_grad():
+        for time_step, snapshot in enumerate(test_subset):
+            x_val = snapshot.x.T.unsqueeze(0).unsqueeze(-1)
+            x_val = (x_val - min_value) / (max_value - min_value)
+            y_val_hat = model(x_val, snapshot.edge_index, snapshot.edge_weight)
+            y_val_hat_single = y_val_hat[:, 0, :, :].squeeze()
+            y_val_target = (snapshot.y.view(-1) - min_value) / (max_value - min_value)
+
+            val_loss += torch.mean((y_val_hat_single - y_val_target) ** 2)
+
+    val_loss = val_loss / (time_step + 1)
+    print(f"Epoch {epoch + 1}/{num_epochs}, Validation Loss: {val_loss.item():.4f}")
+
+    # Check for early stopping
+    if early_stopping.check(val_loss.item()):
+        print(f"Early stopping at epoch {epoch + 1}")
+        break
+
+    # If not stopping, continue training
+    model.train()
+        
     training_losses.append(loss.item())
 
     # Concatenate all predictions and targets

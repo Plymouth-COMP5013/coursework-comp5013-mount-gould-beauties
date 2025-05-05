@@ -9,7 +9,7 @@ from datetime import datetime
 
 
 # # ========== PLOTTING FUNCTIONS ==========
-def plot_and_save_loss(losses, num_nodes, hidden_channels, learning_rate, subset_ratio, decay, decay_step, test_number, extended_desc, folder='graphs', subfolder=None):
+def plot_and_save_loss(losses, num_nodes, hidden_channels, learning_rate, subset_ratio, decay, decay_step, test_number, extended_desc, folder = 'graphs', subfolder = None):
     """
     Plots training loss over epochs, then saves the plot to a specified folder.
     
