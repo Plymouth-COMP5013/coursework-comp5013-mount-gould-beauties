@@ -13,13 +13,13 @@ from early_stopping import EarlyStopping
 
 # ========== OPTIONS ==========
 # Ratio of the dataset to use for the subset to test on. Example: 0.03 = 3% of the dataset
-SUBSET_RATIO = 0.16
+SUBSET_RATIO = 0.2
 
 # Learning rate for the optimizer. A good value is usually between 0.001 and 0.01
-LEARNING_RATE = 0.004
+LEARNING_RATE = 0.003
 
 # Number of hidden channels in the model. A good value is usually between 16 and 64. Higher numbers can lead to overfitting or longer training times.
-HIDDEN_CHANNELS = 64
+HIDDEN_CHANNELS = 32
 
 # Number of epochs to train the model. A good value is usually between 10 and 50, or lower for quick tests.
 EPOCHS = 20
@@ -27,8 +27,8 @@ EPOCHS = 20
 # Nuber of nodes in the dataset. This is usually fixed for a given dataset. Currently I'm only supporting 288 nodes.
 NUM_NODES = 228
 
-# Learning rate decay step size. A good value is usually between 3 and 8.
-STEP_SIZE = 3
+# Learning rate decay step size. A good value is usually between 3 and 8 if using aggressive decay.
+STEP_SIZE = 4
 
 # Gamme for learning rate decay. A good value is usually between 0.3 and 0.9.
 GAMMA = 0.7
@@ -37,14 +37,14 @@ GAMMA = 0.7
 GRAPH_SUBFOLDER = "series_1"
 
 # Test number for the experiment. Can be used to identify the test run and can be a string.
-TEST_NUMBER = "1.2"
+TEST_NUMBER = "1.3"
 
 # Extended description to be placed at the bottom of the plot.
-EXTENDED_DESC = "First test running the model with RMSE loss function."
+EXTENDED_DESC = "Test to see if tracking validation loss on the loss plot works as intended."
 
 # Model saving options; would we like to save the model's architecture and state dictionary?
-SAVE_ARCHITECTURE = True
-SAVE_STATE_DICT = True
+SAVE_ARCHITECTURE = False
+SAVE_STATE_DICT = False
 
 
 # ========== DATA MANAGEMENT ==========
@@ -86,6 +86,7 @@ print(f"Min value: {min_value.item()}, Max value: {max_value.item()}")
 model.train()
 
 training_losses = []
+validation_losses = []
 
 for epoch in tqdm(range(num_epochs), desc="Training Epochs"):
     mse_loss = 0
@@ -124,6 +125,9 @@ for epoch in tqdm(range(num_epochs), desc="Training Epochs"):
     optimizer.zero_grad()
     scheduler.step()
 
+    # Append the training loss to the list
+    training_losses.append(rmse_loss.item())
+
     # Check for early stopping by using the test subset for validation
     model.eval()
     mse_val_loss = 0
@@ -147,6 +151,9 @@ for epoch in tqdm(range(num_epochs), desc="Training Epochs"):
     rmse_val_loss = rmse_val_loss / (time_step + 1)
     print(f"Epoch {epoch + 1}/{num_epochs}, Validation Loss: {rmse_val_loss.item():.4f}")
 
+    # Append the validation loss to the list
+    validation_losses.append(rmse_val_loss.item())
+
     # Check for early stopping
     if early_stopping.check(rmse_val_loss.item()):
         print(f"Early stopping at epoch {epoch + 1}")
@@ -154,8 +161,6 @@ for epoch in tqdm(range(num_epochs), desc="Training Epochs"):
 
     # If not stopping, continue training
     model.train()
-        
-    training_losses.append(rmse_loss.item())
 
     # Concatenate all predictions and targets
     all_predictions = torch.cat(all_predictions)
@@ -178,6 +183,7 @@ for epoch in tqdm(range(num_epochs), desc="Training Epochs"):
 
 plot_and_save_loss(
     training_losses,
+    validation_losses,
     num_nodes=NUM_NODES,
     hidden_channels=HIDDEN_CHANNELS,
     learning_rate=LEARNING_RATE,
