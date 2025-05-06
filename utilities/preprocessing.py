@@ -16,7 +16,7 @@ def load_dataset_for_stgcn(window_size=12):
     """
     # Load velocity data (speeds at sensor stations)
     velocity_df = pd.read_csv("dataset/PeMSD7_V_228.csv", header=None)
-    velocity_matrix = velocity_df.values  # Shape: (228, 12672)
+    velocity_matrix = velocity_df.values  # Shape: (12672, 228)
 
     # Load adjacency matrix (data structure of the graph)
     adj_df = pd.read_csv("dataset/PeMSD7_W_228.csv", header=None)
@@ -38,9 +38,7 @@ def load_dataset_for_stgcn(window_size=12):
 
     # Create temporal features and targets
     num_nodes = velocity_matrix.shape[1]  # 228 nodes (columns)
-    num_time_steps = velocity_matrix.shape[
-        0
-    ]  # 12672 time steps (rows, 5-min intervals representing 44 days in total)
+    num_time_steps = velocity_matrix.shape[0]  # 12672 time steps (rows, 5-min intervals representing 44 days in total)
 
     # We'll create sequences where we use window_size previous time steps as features
     # and predict the next time step
