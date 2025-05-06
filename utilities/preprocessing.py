@@ -1,4 +1,5 @@
 import pandas as pd
+import random
 import numpy as np
 from torch_geometric_temporal.signal import StaticGraphTemporalSignal
 from torch_geometric_temporal.signal.train_test_split import temporal_signal_split
@@ -68,8 +69,8 @@ def load_dataset_for_stgcn(window_size=12):
     return dataset
 
 
-# This is deprecated, but kept for reference
-def split_dataset(dataset, train_ratio=0.8, validation_split=0.5):
+# This is DEPRECATED, but kept for reference
+def split_dataset(dataset, train_ratio = 0.8, validation_split = 0.5):
     """
     Split the dataset into training and testing sets.
 
@@ -83,10 +84,10 @@ def split_dataset(dataset, train_ratio=0.8, validation_split=0.5):
     """
 
     # Split the dataset into training and testing sets
-    train_dataset, test_dataset = temporal_signal_split(dataset, train_ratio=train_ratio)
+    train_dataset, test_dataset = temporal_signal_split(dataset, train_ratio = train_ratio)
 
     # Further split the test dataset into testing and validation sets
-    test_dataset, val_dataset = temporal_signal_split(test_dataset, train_ratio=validation_split)
+    test_dataset, val_dataset = temporal_signal_split(test_dataset, train_ratio = validation_split)
 
     # Return the datasets
     return train_dataset, test_dataset, val_dataset
@@ -105,7 +106,7 @@ def train_test_split(dataset):
     """
 
     # Split the dataset into training and testing sets
-    train_dataset, test_dataset = temporal_signal_split(dataset, train_ratio=0.5)
+    train_dataset, test_dataset = temporal_signal_split(dataset, train_ratio = 0.5)
 
     # Return the datasets
     return train_dataset, test_dataset
@@ -124,9 +125,7 @@ def subset_data(dataset, subset_ratio):
     """
 
     # Split the dataset into subset and remaining
-    subset_dataset, remaining_dataset = temporal_signal_split(
-        dataset, train_ratio=subset_ratio
-    )
+    subset_dataset, remaining_dataset = temporal_signal_split(dataset, train_ratio = subset_ratio)
 
     # Return the subset dataset
     return subset_dataset
@@ -153,3 +152,32 @@ def train_test_subset(dataset, subset_ratio):
 
     # Return the training and testing subsets
     return train_subset, test_subset
+
+
+def shuffle_dataset(dataset):
+    """
+    Shuffle the dataset, which is likely going to be the training subset.
+    
+    Args:
+        dataset (StaticGraphTemporalSignal): The dataset to shuffle.
+
+    Returns:
+        StaticGraphTemporalSignal: The shuffled dataset.
+    """
+
+    # Convert the dataset to a list
+    dataset_as_list = list(dataset)
+
+    # Shuffle the list
+    random.shuffle(dataset_as_list)
+
+    # Convert the list back to a StaticGraphTemporalSignal object
+    shuffled_dataset = StaticGraphTemporalSignal(
+        edge_index=dataset.edge_index,
+        edge_weight=dataset.edge_weight,
+        features=[snapshot.x for snapshot in dataset_as_list],
+        targets=[snapshot.y for snapshot in dataset_as_list],
+    )
+
+    # Return the shuffled dataset
+    return shuffled_dataset

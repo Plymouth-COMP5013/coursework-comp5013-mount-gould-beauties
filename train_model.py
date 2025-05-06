@@ -1,5 +1,5 @@
 # ========== IMPORTS ==========
-from utilities.preprocessing import load_dataset_for_stgcn, train_test_subset
+from utilities.preprocessing import load_dataset_for_stgcn, train_test_subset, train_test_split, subset_data, shuffle_dataset
 from utilities.plotting import plot_and_save_loss
 from stgcn import STGCN
 import torch
@@ -8,21 +8,21 @@ import torch.optim as optim
 from datetime import datetime
 from tqdm import tqdm
 from torch.optim.lr_scheduler import StepLR
-from early_stopping import EarlyStopping
+from mechanisms.early_stopping import EarlyStopping
 
 
 # ========== OPTIONS ==========
 # Ratio of the dataset to use for the subset to test on. Example: 0.03 = 3% of the dataset
-SUBSET_RATIO = 0.2
+SUBSET_RATIO = 0.15
 
 # Learning rate for the optimizer. A good value is usually between 0.001 and 0.01
-LEARNING_RATE = 0.003
+LEARNING_RATE = 0.004
 
 # Number of hidden channels in the model. A good value is usually between 16 and 64. Higher numbers can lead to overfitting or longer training times.
-HIDDEN_CHANNELS = 32
+HIDDEN_CHANNELS = 64
 
 # Number of epochs to train the model. A good value is usually between 10 and 50, or lower for quick tests.
-EPOCHS = 20
+EPOCHS = 32
 
 # Nuber of nodes in the dataset. This is usually fixed for a given dataset. Currently I'm only supporting 288 nodes.
 NUM_NODES = 228
@@ -37,10 +37,13 @@ GAMMA = 0.7
 GRAPH_SUBFOLDER = "series_1"
 
 # Test number for the experiment. Can be used to identify the test run and can be a string.
-TEST_NUMBER = "1.3"
+TEST_NUMBER = "1.4"
 
 # Extended description to be placed at the bottom of the plot.
-EXTENDED_DESC = "Test to see if tracking validation loss on the loss plot works as intended."
+EXTENDED_DESC = "First experiment with the new training data shuffling mechanism. Lowered early stopping delta to 0.003 to allow for more epochs."
+
+# Patience for early stopping (i.e., how many epochs to wait before stopping if no improvement is seen). 
+PATIENCE = 4
 
 # Model saving options; would we like to save the model's architecture and state dictionary?
 SAVE_ARCHITECTURE = False
@@ -49,7 +52,9 @@ SAVE_STATE_DICT = False
 
 # ========== DATA MANAGEMENT ==========
 dataset = load_dataset_for_stgcn(window_size=12)
-train_subet, test_subset = train_test_subset(dataset, subset_ratio=SUBSET_RATIO)
+# train_subet, test_subset = train_test_subset(dataset, subset_ratio=SUBSET_RATIO)
+
+train_set, test_set = train_test_split(dataset)
 
 
 # ========== SETUP ==========
@@ -58,16 +63,16 @@ optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
 scheduler = StepLR(optimizer, step_size=STEP_SIZE, gamma=GAMMA)
 loss_fn = nn.MSELoss()
 num_epochs = EPOCHS
-early_stopping = EarlyStopping(patience=4, min_delta=0.01)
+early_stopping = EarlyStopping(patience=PATIENCE, min_delta=0.003)
 
 
 # ========== COMPUTE NORMALISATION Values ==========
 
 # Flatten all x and y values across the training and testing subsets
-all_values_x_train = torch.cat([snapshot.x.view(-1) for snapshot in train_subet])
-all_values_y_train = torch.cat([snapshot.y.view(-1) for snapshot in train_subet])
-all_values_x_test = torch.cat([snapshot.x.view(-1) for snapshot in test_subset])
-all_values_y_test = torch.cat([snapshot.y.view(-1) for snapshot in test_subset])
+all_values_x_train = torch.cat([snapshot.x.view(-1) for snapshot in train_set])
+all_values_y_train = torch.cat([snapshot.y.view(-1) for snapshot in train_set])
+all_values_x_test = torch.cat([snapshot.x.view(-1) for snapshot in test_set])
+all_values_y_test = torch.cat([snapshot.y.view(-1) for snapshot in test_set])
 
 # Combine the x and y values into a single tensor
 all_values_x = torch.cat((all_values_x_train, all_values_x_test))
@@ -88,12 +93,21 @@ model.train()
 training_losses = []
 validation_losses = []
 
+testing_subset = subset_data(test_set, subset_ratio=SUBSET_RATIO)
+
 for epoch in tqdm(range(num_epochs), desc="Training Epochs"):
+
+    # Reset local variables
     mse_loss = 0
     rmse_loss = 0
     all_predictions = []
     all_targets = []
-    for time_step, snapshot in tqdm(enumerate(train_subet), desc="Training Batches", leave=False):
+
+    # Split and shuffle the training dataset
+    training_subset = shuffle_dataset(train_set)
+    training_subset = subset_data(train_set, subset_ratio=SUBSET_RATIO)
+
+    for time_step, snapshot in tqdm(enumerate(training_subset), desc="Training Batches", leave=False):
         # print(snapshot)
         # print(time_step)
         # print(snapshot.x.shape)
@@ -133,7 +147,7 @@ for epoch in tqdm(range(num_epochs), desc="Training Epochs"):
     mse_val_loss = 0
     rmse_val_loss = 0
     with torch.no_grad():
-        for time_step, snapshot in enumerate(test_subset):
+        for time_step, snapshot in enumerate(testing_subset):
             x_val = snapshot.x.T.unsqueeze(0).unsqueeze(-1)
             x_val = (x_val - min_value) / (max_value - min_value)
             y_val_hat = model(x_val, snapshot.edge_index, snapshot.edge_weight)
@@ -203,7 +217,7 @@ model.eval()
 mse_loss = 0
 rmse_loss = 0
 with torch.no_grad():
-    for time_step, snapshot in tqdm(enumerate(test_subset), desc="Testing Batches", leave=False):
+    for time_step, snapshot in tqdm(enumerate(testing_subset), desc="Testing Batches", leave=False):
         x = snapshot.x.T.unsqueeze(0).unsqueeze(-1)
         x = (x - min_value) / (max_value - min_value) # Normalise x via min-max scaling
         y_hat = model(x, snapshot.edge_index, snapshot.edge_weight)
