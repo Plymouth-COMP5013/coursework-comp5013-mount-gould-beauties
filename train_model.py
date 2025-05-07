@@ -2,6 +2,7 @@
 # Last Modified: 07.05.2025
 # Description: The main script for training our STGCN model on the traffic forecasting dataset.
 
+
 # ========== IMPORTS ==========
 from utilities.preprocessing import load_dataset_for_stgcn, train_test_split, subset_data, shuffle_dataset, get_all_velocity_data
 from utilities.plotting import plot_and_save_loss
@@ -16,24 +17,25 @@ from mechanisms.early_stopping import EarlyStopping
 from mechanisms.normalisation import ZScoreNormaliser
 
 
+
 # ========== OPTIONS ==========
 # Ratio of the dataset to use for the subset to test on. Example: 0.03 = 3% of the dataset
-SUBSET_RATIO = 0.05
+SUBSET_RATIO = 0.1
 
 # Learning rate for the optimizer. A good value is usually between 0.001 and 0.01
-LEARNING_RATE = 0.002
+LEARNING_RATE = 0.001
 
 # Number of hidden channels in the model. A good value is usually between 16 and 64. Higher numbers can lead to overfitting or longer training times.
 HIDDEN_CHANNELS = 64
 
 # Number of epochs to train the model. A good value is usually between 10 and 50, or lower for quick tests.
-EPOCHS = 10
+EPOCHS = 70
 
 # Nuber of nodes in the dataset. This is usually fixed for a given dataset. Currently I'm only supporting 288 nodes.
 NUM_NODES = 228
 
 # Learning rate decay step size. A good value is usually between 3 and 8 if using aggressive decay.
-STEP_SIZE = 2
+STEP_SIZE = 5
 
 # Gamme for learning rate decay. A good value is usually between 0.3 and 0.9.
 GAMMA = 0.8
@@ -42,27 +44,28 @@ GAMMA = 0.8
 GRAPH_SUBFOLDER = "series_2"
 
 # Test number for the experiment. Can be used to identify the test run and can be a string.
-TEST_NUMBER = "2.3"
+TEST_NUMBER = "2.5"
 
 # Extended description to be placed at the bottom of the plot.
-EXTENDED_DESC = "This is after reworking the validation loss to be denormalised to the raw training speeds."
+EXTENDED_DESC = "Another test with larger patience and slightly altered learning rate decay settings."
 
 # Patience for early stopping (i.e., how many epochs to wait before stopping if no improvement is seen). 
-PATIENCE = 6
+PATIENCE = 20
 
 # The number of 5-minute intervals ahead to predict. 3 means 15 minutes ahead, 6 means 30 minutes ahead, etc. DO NOT INCREASE BEYOND 4 (YET)!
 FORECAST_HORIZON = 3
 
 # Model saving options; would we like to save the model's architecture and state dictionary?
-SAVE_ARCHITECTURE = False
-SAVE_STATE_DICT = False
+SAVE_ARCHITECTURE = True
+SAVE_STATE_DICT = True
+
 
 
 # ========== DATA MANAGEMENT ==========
 dataset = load_dataset_for_stgcn(window_size=12, forecast_horizon=FORECAST_HORIZON)
-# train_subet, test_subset = train_test_subset(dataset, subset_ratio=SUBSET_RATIO)
 all_velocity_values = get_all_velocity_data()
 train_set, test_set = train_test_split(dataset)
+
 
 
 # ========== SETUP ==========
@@ -71,158 +74,140 @@ optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
 scheduler = StepLR(optimizer, step_size=STEP_SIZE, gamma=GAMMA)
 loss_fn = nn.MSELoss()
 num_epochs = EPOCHS
-early_stopping = EarlyStopping(patience=PATIENCE, min_delta=0.003)
+early_stopping = EarlyStopping(patience=PATIENCE, min_delta=0.002)
 normaliser = ZScoreNormaliser(all_velocity_values)
 
-
-# ========== COMPUTE NORMALISATION Values ==========
-
-# Flatten all x and y values across the training and testing subsets
-all_values_x_train = torch.cat([snapshot.x.view(-1) for snapshot in train_set])
-all_values_y_train = torch.cat([snapshot.y.view(-1) for snapshot in train_set])
-all_values_x_test = torch.cat([snapshot.x.view(-1) for snapshot in test_set])
-all_values_y_test = torch.cat([snapshot.y.view(-1) for snapshot in test_set])
-
-# Combine the x and y values into a single tensor
-all_values_x = torch.cat((all_values_x_train, all_values_x_test))
-all_values_y = torch.cat((all_values_y_train, all_values_y_test))
-
-# Combine the x and y values into a single tensor
-all_values = torch.cat((all_values_x, all_values_y))
-
-# Compute the min and max values
-min_value = all_values.min()
-max_value = all_values.max()
-print(f"Min value: {min_value.item()}, Max value: {max_value.item()}")
 
 
 # ========== TRAINING LOOP ==========
 model.train()
-
 training_losses = []
 validation_losses = []
 
 for epoch in tqdm(range(num_epochs), desc="Training Epochs"):
 
-    # Reset local variables
-    norm_mse_loss = 0
-    norm_rmse_loss = 0
-    raw_mse_loss = 0
-    raw_rmse_loss = 0
+    # ----- Reset local variables -----
+    norm_mse_loss_total = 0
+    raw_mse_loss_total = 0
     all_predictions = []
     all_targets = []
 
-    # Split and shuffle the training dataset
+    # ----- Shuffle and subset the dataset -----
     training_subset = shuffle_dataset(train_set)
     training_subset = subset_data(train_set, subset_ratio=SUBSET_RATIO)
 
-    # Split and shuffle the testing dataset
     testing_subset = shuffle_dataset(test_set)
     testing_subset = subset_data(test_set, subset_ratio=SUBSET_RATIO)
 
-    for time_step, snapshot in tqdm(enumerate(training_subset), desc="Training Batches", leave=False):
+    # ----- Training through each snapshot -----
+    for time_step, snapshot in tqdm(enumerate(training_subset), desc="Training In Progress", leave=False):
+
+        # ----- Forward pass through the STGCN model -----
         x = snapshot.x.T.unsqueeze(0).unsqueeze(-1) # [1, 12, 228, 1]
         x = normaliser.normalise(x)
         y_hat = model(x, snapshot.edge_index, snapshot.edge_weight) # [1, 4, 228, 1]
         y_hat_single = y_hat[:, FORECAST_HORIZON - 1, :, :].squeeze() # [228]
 
+        # ----- Aquire the ground truth targets -----
         raw_targets = snapshot.y.view(-1)
         norm_targets = normaliser.normalise(raw_targets)
 
-        # Compute the loss (normalised)
-        norm_mse = torch.mean((y_hat_single - norm_targets) ** 2)
-        norm_rmse = torch.sqrt(norm_mse)
+        # ----- Compute the loss -----
+        norm_mse_loss = torch.mean((y_hat_single - norm_targets) ** 2)
+        norm_mse_loss_total = norm_mse_loss_total + norm_mse_loss
 
-        # Add the loss to the total loss (normalised)
-        norm_mse_loss = norm_mse_loss + norm_mse
-        norm_rmse_loss = norm_rmse_loss + norm_rmse
-
-        # Denormalise the predictions and compute the loss (raw)
         raw_y_hat_single = normaliser.denormalise(y_hat_single)
-        raw_mse = torch.mean((raw_y_hat_single - raw_targets) ** 2)
-        raw_rmse = torch.sqrt(raw_mse)
+        raw_mse_loss = torch.mean((raw_y_hat_single - raw_targets) ** 2)
+        raw_mse_loss_total = raw_mse_loss_total + raw_mse_loss
 
-        # Add the loss to the total loss (raw)
-        raw_mse_loss = raw_mse_loss + raw_mse
-        raw_rmse_loss = raw_rmse_loss + raw_rmse
-
-        # Collect the normalised predictions and targets for sampling later
+        # ----- Collect predictions and targets for later analysis -----
         all_predictions.append(y_hat_single.detach())
         all_targets.append(norm_targets.detach())
 
-    norm_rmse_loss = norm_rmse_loss / (time_step + 1)
-    norm_rmse_loss.backward()
+    # ----- RMSE calculation -----
+    avg_raw_mse_loss = raw_mse_loss_total / (time_step + 1)
+    avg_norm_mse_loss = norm_mse_loss_total / (time_step + 1)
+
+    avg_raw_rmse_loss = torch.sqrt(avg_raw_mse_loss)
+    avg_norm_mse_loss = torch.sqrt(avg_norm_mse_loss)
+
+    training_losses.append(avg_raw_rmse_loss.item())
+
+    # ----- Backpropagation and optimisation -----
+    avg_norm_mse_loss.backward()
     optimizer.step()
     optimizer.zero_grad()
     scheduler.step()
 
-    # Append the training loss to the list
-    training_losses.append(raw_rmse_loss.item())
-
-    # Check for early stopping by using the test subset for validation
+    # ----- Validation begins -----
     model.eval()
-    norm_mse_val_loss = 0
-    norm_rmse_val_loss = 0
-    raw_mse_val_loss = 0
-    raw_rmse_val_loss = 0
+    norm_mse_val_loss_total = 0
+    raw_mse_val_loss_total = 0
     with torch.no_grad():
-        for time_step, snapshot in enumerate(testing_subset):
+
+        # ----- Validation through each snapshot, as with the training loop -----
+        for time_step, snapshot in tqdm(enumerate(testing_subset), desc="Validation In Progress", leave=False):
+
+            # ----- Forward pass through the STGCN model -----
             x_val = snapshot.x.T.unsqueeze(0).unsqueeze(-1) # [1, 12, 228, 1]
             x_val = normaliser.normalise(x_val)
             y_val_hat = model(x_val, snapshot.edge_index, snapshot.edge_weight) # [1, 4, 228, 1]
             y_val_hat_single = y_val_hat[:, FORECAST_HORIZON - 1, :, :].squeeze() # [228]
-            y_val_target = normaliser.normalise(snapshot.y.view(-1))
 
-            # Compute the validation loss (normalised)
-            norm_mse_val = torch.mean((y_val_hat_single - y_val_target) ** 2)
-            norm_rmse_val = torch.sqrt(norm_mse_val)
+            # ----- Aquire the ground truth targets -----
+            raw_y_val_target = snapshot.y.view(-1)
+            norm_y_val_target = normaliser.normalise(raw_y_val_target)
 
-            # Add the validation loss to the total validation loss (normalised)
-            norm_mse_val_loss = norm_mse_val_loss + norm_mse_val
-            norm_rmse_val_loss = norm_rmse_val_loss + norm_rmse_val
+            # ----- Compute the validation loss -----
+            norm_mse_val_loss = torch.mean((y_val_hat_single - norm_y_val_target) ** 2)
+            norm_mse_val_loss_total = norm_mse_val_loss_total + norm_mse_val_loss
 
-            # Denormalise the predictions and compute the validation loss (raw)
             raw_y_val_hat_single = normaliser.denormalise(y_val_hat_single)
-            raw_mse_val = torch.mean((raw_y_val_hat_single - snapshot.y.view(-1)) ** 2)
-            raw_rmse_val = torch.sqrt(raw_mse_val)
+            raw_mse_val_loss = torch.mean((raw_y_val_hat_single - raw_y_val_target) ** 2)
+            raw_mse_val_loss_total = raw_mse_val_loss_total + raw_mse_val_loss
 
-            # Add the validation loss to the total validation loss (raw)
-            raw_mse_val_loss = raw_mse_val_loss + raw_mse_val
-            raw_rmse_val_loss = raw_rmse_val_loss + raw_rmse_val
+    # ----- RMSE calculation -----
+    avg_raw_mse_val_loss = raw_mse_val_loss_total / (time_step + 1)
+    avg_norm_mse_val_loss = norm_mse_val_loss_total / (time_step + 1)
 
-    norm_rmse_val_loss = norm_rmse_val_loss / (time_step + 1)
-    print(f"Epoch {epoch + 1}/{num_epochs}, Raw Validation Loss: {raw_rmse_val_loss.item():.4f}, Normalised Validation Loss: {norm_rmse_val_loss.item():.4f}")
+    raw_rmse_val_loss = torch.sqrt(avg_raw_mse_val_loss)
+    norm_rmse_val_loss = torch.sqrt(avg_norm_mse_val_loss)
 
-    # Append the validation loss to the list
     validation_losses.append(raw_rmse_val_loss.item())
 
-    # Check for early stopping
-    if early_stopping.check(norm_rmse_val_loss.item()):
-        print(f"Early stopping at epoch {epoch + 1}")
-        break
+    # ----- Print the training and validation loss -----
+    print(f"Epoch {epoch + 1}/{num_epochs}, Raw Validation Loss: {raw_rmse_val_loss.item():.4f}, Normalised Validation Loss: {norm_rmse_val_loss.item():.4f}")
 
-    # If not stopping, continue training
+    # ----- Early stopping check -----
+    if early_stopping.check(norm_rmse_val_loss.item()):
+        print(f"Early stopping has been triggered at epoch {epoch + 1}")
+        break
+    
+    # ----- Continue training if early stopping is not triggered -----
     model.train()
 
-    # Concatenate all predictions and targets
+    # ----- Print the training loss -----
+    print(f"Epoch {epoch + 1}/{num_epochs}, Raw Training Loss: {avg_raw_rmse_loss.item():.4f}, Normalised Training Loss: {avg_norm_mse_loss.item():.4f}")
+
+    # ----- Sample (15) predictions and targets -----
     all_predictions = torch.cat(all_predictions)
     all_targets = torch.cat(all_targets)
 
-    # Randomly sample 8 indices
-    sample_indices = torch.randperm(all_predictions.size(0))[:8]
+    sample_indices = torch.randperm(all_predictions.size(0))[:15]
     sampled_predictions = all_predictions[sample_indices]
     sampled_targets = all_targets[sample_indices]
 
-    print(f"Epoch {epoch + 1}/{num_epochs}, Raw Training Loss: {raw_rmse_loss.item():.4f}, Normalised Training Loss: {norm_rmse_loss.item():.4f}")
-
-    # Denormalise the sampled predictions and targets
+    # ----- Print the sampled predictions and targets -----
     sampled_predictions = normaliser.denormalise(sampled_predictions)
     sampled_targets = normaliser.denormalise(sampled_targets)
 
-    # Print the sampled predictions and targets
+    print(f"\nSampled Predictions and Targets for Epoch {epoch + 1}:")
     for i in range(len(sampled_predictions)):
         print(f"Sample {i + 1}: Predicted: {sampled_predictions[i].item():.2f}, Target: {sampled_targets[i].item():.2f}")
 
+
+
+# ========== PLOT THE LOSS ==========
 plot_and_save_loss(
     training_losses,
     validation_losses,
@@ -239,29 +224,31 @@ plot_and_save_loss(
     subfolder=GRAPH_SUBFOLDER)
 
 
-# ========== TESTING ==========
-model.eval()
 
-mse_loss = 0
-rmse_loss = 0
-with torch.no_grad():
-    for time_step, snapshot in tqdm(enumerate(testing_subset), desc="Testing Batches", leave=False):
-        x = snapshot.x.T.unsqueeze(0).unsqueeze(-1) # [1, 12, 228, 1]
-        x = normaliser.normalise(x)
-        y_hat = model(x, snapshot.edge_index, snapshot.edge_weight) # [1, 4, 228, 1]
-        y_hat_single = y_hat[:, FORECAST_HORIZON - 1, :, :].squeeze() # [228]
-        target = normaliser.normalise(snapshot.y.view(-1)) 
+# ========== OLD TESTING METHOD (Currently Under Construction) ==========
+# model.eval()
 
-        # Compute the loss
-        mse = torch.mean((y_hat_single - target) ** 2)
-        rmse = torch.sqrt(mse)
+# mse_loss = 0
+# rmse_loss = 0
+# with torch.no_grad():
+#     for time_step, snapshot in tqdm(enumerate(testing_subset), desc="Testing Batches", leave=False):
+#         x = snapshot.x.T.unsqueeze(0).unsqueeze(-1) # [1, 12, 228, 1]
+#         x = normaliser.normalise(x)
+#         y_hat = model(x, snapshot.edge_index, snapshot.edge_weight) # [1, 4, 228, 1]
+#         y_hat_single = y_hat[:, FORECAST_HORIZON - 1, :, :].squeeze() # [228]
+#         target = normaliser.normalise(snapshot.y.view(-1)) 
 
-        # Add the loss to the total loss
-        mse_loss = mse_loss + mse
-        rmse_loss = rmse_loss + rmse
+#         # Compute the loss
+#         mse = torch.mean((y_hat_single - target) ** 2)
+#         rmse = torch.sqrt(mse)
 
-    rmse_loss = rmse_loss.item() / (time_step + 1)
-    print(f"Test Loss: {rmse_loss:.4f}")
+#         # Add the loss to the total loss
+#         mse_loss = mse_loss + mse
+#         rmse_loss = rmse_loss + rmse
+
+#     rmse_loss = rmse_loss.item() / (time_step + 1)
+#     print(f"Test Loss: {rmse_loss:.4f}")
+
 
 
 # ========== SAVE MODEL ==========
@@ -270,8 +257,8 @@ if SAVE_ARCHITECTURE or SAVE_STATE_DICT:
 
     save_data = {
         'model_state_dict': model.state_dict(),
-        'min_val': min_value,
-        'max_val': max_value
+        'normalisation_mean': normaliser.mean,
+        'normalisation_std': normaliser.std,
     }
 
     # Save the model state dictionary and normalisation values
