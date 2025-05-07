@@ -20,7 +20,7 @@ SUBSET_RATIO = 0.2
 LEARNING_RATE = 0.003
 
 # Number of hidden channels in the model. A good value is usually between 16 and 64. Higher numbers can lead to overfitting or longer training times.
-HIDDEN_CHANNELS = 64
+HIDDEN_CHANNELS = 32
 
 # Number of epochs to train the model. A good value is usually between 10 and 50, or lower for quick tests.
 EPOCHS = 60
@@ -38,13 +38,13 @@ GAMMA = 0.7
 GRAPH_SUBFOLDER = "series_2"
 
 # Test number for the experiment. Can be used to identify the test run and can be a string.
-TEST_NUMBER = "2.0"
+TEST_NUMBER = "2.1"
 
 # Extended description to be placed at the bottom of the plot.
-EXTENDED_DESC = "First test with z-score standardisation. A smaller learning rate of 0.003 is used and patience is increased."
+EXTENDED_DESC = "The same params as model 2.0, but with a reduced number of hidden channels to assess performance."
 
 # Patience for early stopping (i.e., how many epochs to wait before stopping if no improvement is seen). 
-PATIENCE = 10
+PATIENCE = 6
 
 # Model saving options; would we like to save the model's architecture and state dictionary?
 SAVE_ARCHITECTURE = True
@@ -112,20 +112,11 @@ for epoch in tqdm(range(num_epochs), desc="Training Epochs"):
     testing_subset = subset_data(test_set, subset_ratio=SUBSET_RATIO)
 
     for time_step, snapshot in tqdm(enumerate(training_subset), desc="Training Batches", leave=False):
-        # print(snapshot)
-        # print(time_step)
-        # print(snapshot.x.shape)
-        x = snapshot.x.T.unsqueeze(0).unsqueeze(-1)
-        # x = (x - min_value) / (max_value - min_value)  # Normalise x via min-max scaling
-        x = normaliser.normalise(x)  # Normalise x via z-score scaling
-        # print(x.shape)
-        y_hat = model(x, snapshot.edge_index, snapshot.edge_weight)
-        # print(f"y_hat shape: {y_hat.shape}")         # likely [1, 1, 288, 1]
-        # print(f"snapshot.y shape: {snapshot.y.shape}")  # this is the question mark
-        # Take the first timestep from y_hat
-        y_hat_single = y_hat[:, 0, :, :].squeeze()   # shape: [228]
-        # target = (snapshot.y.view(-1) - min_value) / (max_value - min_value)  # Normalise target via min-max scaling
-        target = normaliser.normalise(snapshot.y.view(-1))  # Normalise target via z-score scaling
+        x = snapshot.x.T.unsqueeze(0).unsqueeze(-1) # [1, 12, 228, 1]
+        x = normaliser.normalise(x)
+        y_hat = model(x, snapshot.edge_index, snapshot.edge_weight) # [1, 4, 228, 1]
+        y_hat_single = y_hat[:, 0, :, :].squeeze() # [228]
+        target = normaliser.normalise(snapshot.y.view(-1))
 
         # Compute the loss
         mse = torch.mean((y_hat_single - target) ** 2)
@@ -154,13 +145,11 @@ for epoch in tqdm(range(num_epochs), desc="Training Epochs"):
     rmse_val_loss = 0
     with torch.no_grad():
         for time_step, snapshot in enumerate(testing_subset):
-            x_val = snapshot.x.T.unsqueeze(0).unsqueeze(-1)
-            # x_val = (x_val - min_value) / (max_value - min_value)
-            x_val = normaliser.normalise(x_val)  # Normalise x via z-score scaling
-            y_val_hat = model(x_val, snapshot.edge_index, snapshot.edge_weight)
-            y_val_hat_single = y_val_hat[:, 0, :, :].squeeze()
-            # y_val_target = (snapshot.y.view(-1) - min_value) / (max_value - min_value)
-            y_val_target = normaliser.normalise(snapshot.y.view(-1))  # Normalise target via z-score scaling
+            x_val = snapshot.x.T.unsqueeze(0).unsqueeze(-1) # [1, 12, 228, 1]
+            x_val = normaliser.normalise(x_val)
+            y_val_hat = model(x_val, snapshot.edge_index, snapshot.edge_weight) # [1, 4, 228, 1]
+            y_val_hat_single = y_val_hat[:, 0, :, :].squeeze() # [228]
+            y_val_target = normaliser.normalise(snapshot.y.view(-1))
 
             # Compute the validation loss
             mse_val = torch.mean((y_val_hat_single - y_val_target) ** 2)
