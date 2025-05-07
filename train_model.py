@@ -1,5 +1,9 @@
+# Author: Reef Lakin
+# Last Modified: 07.05.2025
+# Description: The main script for training our STGCN model on the traffic forecasting dataset.
+
 # ========== IMPORTS ==========
-from utilities.preprocessing import load_dataset_for_stgcn, train_test_subset, train_test_split, subset_data, shuffle_dataset, get_all_velocity_data
+from utilities.preprocessing import load_dataset_for_stgcn, train_test_split, subset_data, shuffle_dataset, get_all_velocity_data
 from utilities.plotting import plot_and_save_loss
 from stgcn import STGCN
 import torch
@@ -190,8 +194,6 @@ for epoch in tqdm(range(num_epochs), desc="Training Epochs"):
     print(f"Epoch {epoch + 1}/{num_epochs}, Loss: {rmse_loss.item():.4f}")
 
     # Denormalise the sampled predictions and targets
-    # sampled_predictions = sampled_predictions * (max_value - min_value) + min_value
-    # sampled_targets = sampled_targets * (max_value - min_value) + min_value
     sampled_predictions = normaliser.denormalise(sampled_predictions)
     sampled_targets = normaliser.denormalise(sampled_targets)
 
@@ -215,20 +217,18 @@ plot_and_save_loss(
     subfolder=GRAPH_SUBFOLDER)
 
 
-# ========== EVALUATION ==========
+# ========== TESTING ==========
 model.eval()
 
 mse_loss = 0
 rmse_loss = 0
 with torch.no_grad():
     for time_step, snapshot in tqdm(enumerate(testing_subset), desc="Testing Batches", leave=False):
-        x = snapshot.x.T.unsqueeze(0).unsqueeze(-1)
-        # x = (x - min_value) / (max_value - min_value) # Normalise x via min-max scaling
-        x = normaliser.normalise(x)  # Normalise x via z-score scaling
-        y_hat = model(x, snapshot.edge_index, snapshot.edge_weight)
-        y_hat_single = y_hat[:, FORECAST_HORIZON - 1, :, :].squeeze()
-        # target = (snapshot.y.view(-1) - min_value) / (max_value - min_value) # Normalise target via min-max scaling
-        target = normaliser.normalise(snapshot.y.view(-1))  # Normalise target via z-score scaling
+        x = snapshot.x.T.unsqueeze(0).unsqueeze(-1) # [1, 12, 228, 1]
+        x = normaliser.normalise(x)
+        y_hat = model(x, snapshot.edge_index, snapshot.edge_weight) # [1, 4, 228, 1]
+        y_hat_single = y_hat[:, FORECAST_HORIZON - 1, :, :].squeeze() # [228]
+        target = normaliser.normalise(snapshot.y.view(-1)) 
 
         # Compute the loss
         mse = torch.mean((y_hat_single - target) ** 2)
