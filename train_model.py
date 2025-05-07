@@ -42,10 +42,10 @@ GAMMA = 0.8
 GRAPH_SUBFOLDER = "series_2"
 
 # Test number for the experiment. Can be used to identify the test run and can be a string.
-TEST_NUMBER = "2.2"
+TEST_NUMBER = "2.3"
 
 # Extended description to be placed at the bottom of the plot.
-EXTENDED_DESC = "Test to see if adding a forecast horizon works as expected."
+EXTENDED_DESC = "This is after reworking the validation loss to be denormalised to the raw training speeds."
 
 # Patience for early stopping (i.e., how many epochs to wait before stopping if no improvement is seen). 
 PATIENCE = 6
@@ -54,8 +54,8 @@ PATIENCE = 6
 FORECAST_HORIZON = 3
 
 # Model saving options; would we like to save the model's architecture and state dictionary?
-SAVE_ARCHITECTURE = True
-SAVE_STATE_DICT = True
+SAVE_ARCHITECTURE = False
+SAVE_STATE_DICT = False
 
 
 # ========== DATA MANAGEMENT ==========
@@ -105,8 +105,10 @@ validation_losses = []
 for epoch in tqdm(range(num_epochs), desc="Training Epochs"):
 
     # Reset local variables
-    mse_loss = 0
-    rmse_loss = 0
+    norm_mse_loss = 0
+    norm_rmse_loss = 0
+    raw_mse_loss = 0
+    raw_rmse_loss = 0
     all_predictions = []
     all_targets = []
 
@@ -123,33 +125,46 @@ for epoch in tqdm(range(num_epochs), desc="Training Epochs"):
         x = normaliser.normalise(x)
         y_hat = model(x, snapshot.edge_index, snapshot.edge_weight) # [1, 4, 228, 1]
         y_hat_single = y_hat[:, FORECAST_HORIZON - 1, :, :].squeeze() # [228]
-        target = normaliser.normalise(snapshot.y.view(-1))
 
-        # Compute the loss
-        mse = torch.mean((y_hat_single - target) ** 2)
-        rmse = torch.sqrt(mse)
+        raw_targets = snapshot.y.view(-1)
+        norm_targets = normaliser.normalise(raw_targets)
 
-        # Add the loss to the total loss
-        mse_loss = mse_loss + mse
-        rmse_loss = rmse_loss + rmse
+        # Compute the loss (normalised)
+        norm_mse = torch.mean((y_hat_single - norm_targets) ** 2)
+        norm_rmse = torch.sqrt(norm_mse)
 
-        # Collect predictions and targets for sampling later
+        # Add the loss to the total loss (normalised)
+        norm_mse_loss = norm_mse_loss + norm_mse
+        norm_rmse_loss = norm_rmse_loss + norm_rmse
+
+        # Denormalise the predictions and compute the loss (raw)
+        raw_y_hat_single = normaliser.denormalise(y_hat_single)
+        raw_mse = torch.mean((raw_y_hat_single - raw_targets) ** 2)
+        raw_rmse = torch.sqrt(raw_mse)
+
+        # Add the loss to the total loss (raw)
+        raw_mse_loss = raw_mse_loss + raw_mse
+        raw_rmse_loss = raw_rmse_loss + raw_rmse
+
+        # Collect the normalised predictions and targets for sampling later
         all_predictions.append(y_hat_single.detach())
-        all_targets.append(target.detach())
+        all_targets.append(norm_targets.detach())
 
-    rmse_loss = rmse_loss / (time_step + 1)
-    rmse_loss.backward()
+    norm_rmse_loss = norm_rmse_loss / (time_step + 1)
+    norm_rmse_loss.backward()
     optimizer.step()
     optimizer.zero_grad()
     scheduler.step()
 
     # Append the training loss to the list
-    training_losses.append(rmse_loss.item())
+    training_losses.append(raw_rmse_loss.item())
 
     # Check for early stopping by using the test subset for validation
     model.eval()
-    mse_val_loss = 0
-    rmse_val_loss = 0
+    norm_mse_val_loss = 0
+    norm_rmse_val_loss = 0
+    raw_mse_val_loss = 0
+    raw_rmse_val_loss = 0
     with torch.no_grad():
         for time_step, snapshot in enumerate(testing_subset):
             x_val = snapshot.x.T.unsqueeze(0).unsqueeze(-1) # [1, 12, 228, 1]
@@ -158,24 +173,31 @@ for epoch in tqdm(range(num_epochs), desc="Training Epochs"):
             y_val_hat_single = y_val_hat[:, FORECAST_HORIZON - 1, :, :].squeeze() # [228]
             y_val_target = normaliser.normalise(snapshot.y.view(-1))
 
-            # Compute the validation loss
-            mse_val = torch.mean((y_val_hat_single - y_val_target) ** 2)
-            rmse_val = torch.sqrt(mse_val)
+            # Compute the validation loss (normalised)
+            norm_mse_val = torch.mean((y_val_hat_single - y_val_target) ** 2)
+            norm_rmse_val = torch.sqrt(norm_mse_val)
 
-            # Add the validation loss to the total validation loss
-            mse_val_loss = mse_val_loss + mse_val
-            rmse_val_loss = rmse_val_loss + rmse_val
+            # Add the validation loss to the total validation loss (normalised)
+            norm_mse_val_loss = norm_mse_val_loss + norm_mse_val
+            norm_rmse_val_loss = norm_rmse_val_loss + norm_rmse_val
 
-    rmse_val_loss = rmse_val_loss / (time_step + 1)
-    print(f"Epoch {epoch + 1}/{num_epochs}, Validation Loss: {rmse_val_loss.item():.4f}")
-    print(f"Snapshot Count in Training Set: {training_subset.snapshot_count}/{train_set.snapshot_count}")
-    print(f"Snapshot Count in Validation Set: {testing_subset.snapshot_count}/{test_set.snapshot_count}")
+            # Denormalise the predictions and compute the validation loss (raw)
+            raw_y_val_hat_single = normaliser.denormalise(y_val_hat_single)
+            raw_mse_val = torch.mean((raw_y_val_hat_single - snapshot.y.view(-1)) ** 2)
+            raw_rmse_val = torch.sqrt(raw_mse_val)
+
+            # Add the validation loss to the total validation loss (raw)
+            raw_mse_val_loss = raw_mse_val_loss + raw_mse_val
+            raw_rmse_val_loss = raw_rmse_val_loss + raw_rmse_val
+
+    norm_rmse_val_loss = norm_rmse_val_loss / (time_step + 1)
+    print(f"Epoch {epoch + 1}/{num_epochs}, Raw Validation Loss: {raw_rmse_val_loss.item():.4f}, Normalised Validation Loss: {norm_rmse_val_loss.item():.4f}")
 
     # Append the validation loss to the list
-    validation_losses.append(rmse_val_loss.item())
+    validation_losses.append(raw_rmse_val_loss.item())
 
     # Check for early stopping
-    if early_stopping.check(rmse_val_loss.item()):
+    if early_stopping.check(norm_rmse_val_loss.item()):
         print(f"Early stopping at epoch {epoch + 1}")
         break
 
@@ -191,7 +213,7 @@ for epoch in tqdm(range(num_epochs), desc="Training Epochs"):
     sampled_predictions = all_predictions[sample_indices]
     sampled_targets = all_targets[sample_indices]
 
-    print(f"Epoch {epoch + 1}/{num_epochs}, Loss: {rmse_loss.item():.4f}")
+    print(f"Epoch {epoch + 1}/{num_epochs}, Raw Training Loss: {raw_rmse_loss.item():.4f}, Normalised Training Loss: {norm_rmse_loss.item():.4f}")
 
     # Denormalise the sampled predictions and targets
     sampled_predictions = normaliser.denormalise(sampled_predictions)
@@ -199,7 +221,7 @@ for epoch in tqdm(range(num_epochs), desc="Training Epochs"):
 
     # Print the sampled predictions and targets
     for i in range(len(sampled_predictions)):
-        print(f"Sample {i + 1}: Predicted: {sampled_predictions[i].item():.4f}, Target: {sampled_targets[i].item():.4f}")
+        print(f"Sample {i + 1}: Predicted: {sampled_predictions[i].item():.2f}, Target: {sampled_targets[i].item():.2f}")
 
 plot_and_save_loss(
     training_losses,
