@@ -6,12 +6,13 @@ from torch_geometric_temporal.signal import StaticGraphTemporalSignal
 from torch_geometric_temporal.signal.train_test_split import temporal_signal_split
 
 
-def load_dataset_for_stgcn(window_size=12):
+def load_dataset_for_stgcn(window_size=12, forecast_horizon=3):
     """
     Load PeMSD7 traffic dataset into a StaticGraphTemporalSignal object.
 
     Args:
         window_size (int): Number of time steps to use as features before predicting next step. Default is 12 (representing 1 hour with 5-min intervals)
+        forecast_horizon (int): Number of time steps to predict. Default is 3 (i.e., in the next 15 minutes)
 
     Returns:
         StaticGraphTemporalSignal: Temporal graph data loader
@@ -48,7 +49,7 @@ def load_dataset_for_stgcn(window_size=12):
     targets = []
 
     # For each valid time window
-    for t in range(num_time_steps - window_size):
+    for t in range(num_time_steps - window_size - forecast_horizon + 1):
         # Features: window_size previous time steps for all nodes
         # Shape: (num_nodes, window_size)
         feature_window = velocity_matrix[t : t + window_size, :].T
@@ -56,7 +57,7 @@ def load_dataset_for_stgcn(window_size=12):
 
         # Target: next time step after the window for all nodes
         # Shape: (num_nodes, 1)
-        target = velocity_matrix[t + window_size, :].reshape(num_nodes, 1)
+        target = velocity_matrix[t + window_size + forecast_horizon - 1, :].reshape(num_nodes, 1)
         targets.append(target)
 
     # Convert to StaticGraphTemporalSignal

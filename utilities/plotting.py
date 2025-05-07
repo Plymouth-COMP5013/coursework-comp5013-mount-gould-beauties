@@ -46,7 +46,6 @@ def plot_and_save_loss(train_losses, val_losses, num_nodes, hidden_channels, lea
     plt.xlabel("Epoch")
     plt.ylabel("Root Mean Squared Error (RMSE)")
     plt.grid(True)
-    plt.ylim(0, 0.8)
     plt.legend(loc='upper right')
     # Convert subset ratio to percentage
     subset_ratio_percentage = subset_ratio * 100

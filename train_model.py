@@ -14,37 +14,40 @@ from mechanisms.normalisation import ZScoreNormaliser
 
 # ========== OPTIONS ==========
 # Ratio of the dataset to use for the subset to test on. Example: 0.03 = 3% of the dataset
-SUBSET_RATIO = 0.2
+SUBSET_RATIO = 0.05
 
 # Learning rate for the optimizer. A good value is usually between 0.001 and 0.01
-LEARNING_RATE = 0.003
+LEARNING_RATE = 0.002
 
 # Number of hidden channels in the model. A good value is usually between 16 and 64. Higher numbers can lead to overfitting or longer training times.
-HIDDEN_CHANNELS = 32
+HIDDEN_CHANNELS = 64
 
 # Number of epochs to train the model. A good value is usually between 10 and 50, or lower for quick tests.
-EPOCHS = 60
+EPOCHS = 10
 
 # Nuber of nodes in the dataset. This is usually fixed for a given dataset. Currently I'm only supporting 288 nodes.
 NUM_NODES = 228
 
 # Learning rate decay step size. A good value is usually between 3 and 8 if using aggressive decay.
-STEP_SIZE = 5
+STEP_SIZE = 2
 
 # Gamme for learning rate decay. A good value is usually between 0.3 and 0.9.
-GAMMA = 0.7
+GAMMA = 0.8
 
 # Sub-folder for the graphs. If None is provided, the graphs will be saved in the highest level of the 'graphs' folder.
 GRAPH_SUBFOLDER = "series_2"
 
 # Test number for the experiment. Can be used to identify the test run and can be a string.
-TEST_NUMBER = "2.1"
+TEST_NUMBER = "2.2"
 
 # Extended description to be placed at the bottom of the plot.
-EXTENDED_DESC = "The same params as model 2.0, but with a reduced number of hidden channels to assess performance."
+EXTENDED_DESC = "Test to see if adding a forecast horizon works as expected."
 
 # Patience for early stopping (i.e., how many epochs to wait before stopping if no improvement is seen). 
 PATIENCE = 6
+
+# The number of 5-minute intervals ahead to predict. 3 means 15 minutes ahead, 6 means 30 minutes ahead, etc. DO NOT INCREASE BEYOND 4 (YET)!
+FORECAST_HORIZON = 3
 
 # Model saving options; would we like to save the model's architecture and state dictionary?
 SAVE_ARCHITECTURE = True
@@ -52,7 +55,7 @@ SAVE_STATE_DICT = True
 
 
 # ========== DATA MANAGEMENT ==========
-dataset = load_dataset_for_stgcn(window_size=12)
+dataset = load_dataset_for_stgcn(window_size=12, forecast_horizon=FORECAST_HORIZON)
 # train_subet, test_subset = train_test_subset(dataset, subset_ratio=SUBSET_RATIO)
 all_velocity_values = get_all_velocity_data()
 train_set, test_set = train_test_split(dataset)
@@ -115,7 +118,7 @@ for epoch in tqdm(range(num_epochs), desc="Training Epochs"):
         x = snapshot.x.T.unsqueeze(0).unsqueeze(-1) # [1, 12, 228, 1]
         x = normaliser.normalise(x)
         y_hat = model(x, snapshot.edge_index, snapshot.edge_weight) # [1, 4, 228, 1]
-        y_hat_single = y_hat[:, 0, :, :].squeeze() # [228]
+        y_hat_single = y_hat[:, FORECAST_HORIZON - 1, :, :].squeeze() # [228]
         target = normaliser.normalise(snapshot.y.view(-1))
 
         # Compute the loss
@@ -148,7 +151,7 @@ for epoch in tqdm(range(num_epochs), desc="Training Epochs"):
             x_val = snapshot.x.T.unsqueeze(0).unsqueeze(-1) # [1, 12, 228, 1]
             x_val = normaliser.normalise(x_val)
             y_val_hat = model(x_val, snapshot.edge_index, snapshot.edge_weight) # [1, 4, 228, 1]
-            y_val_hat_single = y_val_hat[:, 0, :, :].squeeze() # [228]
+            y_val_hat_single = y_val_hat[:, FORECAST_HORIZON - 1, :, :].squeeze() # [228]
             y_val_target = normaliser.normalise(snapshot.y.view(-1))
 
             # Compute the validation loss
@@ -223,7 +226,7 @@ with torch.no_grad():
         # x = (x - min_value) / (max_value - min_value) # Normalise x via min-max scaling
         x = normaliser.normalise(x)  # Normalise x via z-score scaling
         y_hat = model(x, snapshot.edge_index, snapshot.edge_weight)
-        y_hat_single = y_hat[:, 0, :, :].squeeze()
+        y_hat_single = y_hat[:, FORECAST_HORIZON - 1, :, :].squeeze()
         # target = (snapshot.y.view(-1) - min_value) / (max_value - min_value) # Normalise target via min-max scaling
         target = normaliser.normalise(snapshot.y.view(-1))  # Normalise target via z-score scaling
 
