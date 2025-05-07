@@ -1,6 +1,7 @@
 import pandas as pd
 import random
 import numpy as np
+import torch
 from torch_geometric_temporal.signal import StaticGraphTemporalSignal
 from torch_geometric_temporal.signal.train_test_split import temporal_signal_split
 
@@ -181,3 +182,22 @@ def shuffle_dataset(dataset):
 
     # Return the shuffled dataset
     return shuffled_dataset
+
+
+def get_all_velocity_data():
+    """
+    Load the velocity data from the PeMSD7 dataset, and return it as a numpy array.
+
+    Returns:
+        torch.Tensor: The velocity data as a 1D tensor.
+    """
+
+    # Load the velocity data
+    velocity_df = pd.read_csv("dataset/PeMSD7_V_228.csv", header=None)
+    velocity_matrix = velocity_df.values  # Shape: (12672, 228)
+
+    # Flatten the velocity matrix to a 1D array
+    velocity_matrix = velocity_matrix.flatten()
+
+    # Conver to a tensor and return
+    return torch.tensor(velocity_matrix, dtype=torch.float32)
