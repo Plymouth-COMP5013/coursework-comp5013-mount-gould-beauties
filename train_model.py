@@ -19,43 +19,43 @@ from mechanisms.normalisation import ZScoreNormaliser
 
 
 # ========== OPTIONS ==========
-# Ratio of the dataset to use for the subset to test on. Example: 0.03 = 3% of the dataset
-SUBSET_RATIO = 0.1
+# Ratio of the dataset to use for training and validation. Example: 0.03 = 3% of the dataset.
+SUBSET_RATIO = 0.4
 
-# Learning rate for the optimizer. A good value is usually between 0.001 and 0.01
+# Learning rate for the optimizer. A good value is 0.001, and will decrease with the learning rate scheduler.
 LEARNING_RATE = 0.001
 
-# Number of hidden channels in the model. A good value is usually between 16 and 64. Higher numbers can lead to overfitting or longer training times.
-HIDDEN_CHANNELS = 128
+# Number of hidden channels in the model. A good value is usually between 16 and 64. Higher numbers have only seen worse performance and longer training times.
+HIDDEN_CHANNELS = 32
 
-# Number of epochs to train the model. A good value is usually between 10 and 50, or lower for quick tests.
-EPOCHS = 100
+# Number of epochs to train the model. A good value is around 50, but early stopping may trigger the model to stop training earlier.
+EPOCHS = 50
 
-# Nuber of nodes in the dataset. This is usually fixed for a given dataset. Currently I'm only supporting 288 nodes.
+# Number of nodes in the dataset. Currently only 228 nodes are supported.
 NUM_NODES = 228
 
-# Learning rate decay step size. A good value is usually between 3 and 8 if using aggressive decay.
-STEP_SIZE = 15
+# Learning rate decay step size. After how many epochs should the learning rate decay? Smaller values means it will decay quicker.
+STEP_SIZE = 10
 
-# Gamme for learning rate decay. A good value is usually between 0.3 and 0.9.
+# Gamma for learning rate decay. A good value is between 0.7 and 0.9. Lower values than this will mean a more aggressive decay.
 GAMMA = 0.9
 
-# Sub-folder for the graphs. If None is provided, the graphs will be saved in the highest level of the 'graphs' folder.
+# Sub-folder for the graphs. If None is provided, the graphs will be saved in the highest level of the 'graphs' folder. Can be anything.
 GRAPH_SUBFOLDER = "series_3"
 
-# Test number for the experiment. Can be used to identify the test run and can be a string.
-TEST_NUMBER = "3.3"
+# Test number for the experiment. Can be used to identify the test run on a loss plot. Doesn't have to be a number, can be anything.
+TEST_NUMBER = "3.4"
 
-# Extended description to be placed at the bottom of the plot.
-EXTENDED_DESC = "An experiment with a unusually high number of hidden channels, to see what happens."
+# Extended description to be placed at the bottom of the plot. Describe what this test is about, maybe what you've changed. Again, can be anything.
+EXTENDED_DESC = "Reduction to the hidden layers, but an increase to the ratio of data."
 
-# Patience for early stopping (i.e., how many epochs to wait before stopping if no improvement is seen). 
+# Patience for early stopping (i.e., how many epochs to wait before stopping if no improvement is seen). Kills the training if validation loss doesn't improve for this many epochs.
 PATIENCE = 10
 
 # The number of 5-minute intervals ahead to predict. 3 means 15 minutes ahead, 6 means 30 minutes ahead, etc. DO NOT INCREASE BEYOND 4 (YET)!
 FORECAST_HORIZON = 3
 
-# Model saving options; would we like to save the model's architecture and state dictionary?
+# Model saving options; would we like to save the model's architecture and state dictionary to the root directory?
 SAVE_ARCHITECTURE = True
 SAVE_STATE_DICT = True
 
