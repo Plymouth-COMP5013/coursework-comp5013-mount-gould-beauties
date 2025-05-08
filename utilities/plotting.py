@@ -1,5 +1,5 @@
 # Author: Reef Lakin
-# Last Modified: 30.04.2025
+# Last Modified: 08.05.2025
 # Description: Functions for plotting and saving neural network data.
 
 # # ========== IMPORTS ==========
@@ -108,14 +108,13 @@ def plot_ground_truth_and_predictions(times, ground_truth, predictions, test_num
     plt.gcf().autofmt_xdate()  # Rotate x-axis labels for readability
 
     # Labels and legend
-    plt.title("Speed over 24 Hours")
+    plt.title("Average Speed over 24 Hours")
     plt.suptitle(f"Test {test_number} - Generated on {timestamp_str}", fontsize=10)
     plt.xlabel("Time of Day")
     plt.ylabel("Speed (km/h)")
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
-    plt.show()
 
     save_path = os.path.join(folder, f"predictions_vs_ground_truth_{filename_time}.png")
     plt.savefig(save_path, bbox_inches="tight")

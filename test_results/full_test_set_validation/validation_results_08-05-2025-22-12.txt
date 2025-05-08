@@ -1,4 +1,4 @@
-Test Description: Full test on Model 3.4
+Test Description: Full test on Model 3.2
 Raw RMSE Validation Loss: 8.093948
 Normalized RMSE Validation Loss: 0.600296
 Raw MSE Validation Loss: 65.512001

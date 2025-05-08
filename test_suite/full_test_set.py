@@ -1,8 +1,14 @@
+# Author: Reef Lakin
+# Last Modified: 08.05.2025
+# Description: Utilities for testing the effectiveness of a trained STGCN model on a test set.
+# At the moment, you can test only from this file. So just run the Python interpreter from this file and you'll be good to go.
+# ----------------------------------------------------------------------------------------------------------------------------
+
+
+# ========== IMPORTS ==========
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-# ========== IMPORTS ==========
 import torch
 from stgcn import STGCN
 from utilities.preprocessing import load_dataset_for_stgcn, train_test_split, subset_data, shuffle_dataset, get_all_velocity_data
@@ -16,48 +22,40 @@ from utilities.plotting import plot_ground_truth_and_predictions
 
 
 # ========== SETUP Stored Model Files ==========
-# Constants
+# ----- Set the main options -----
 NUM_NODES = 228
 HIDDEN_CHANNELS = 64
 FORECAST_HORIZON = 3
+TEST_NUMBER = "3.2"
+MODEL_PATH = "saved_models/series_3/3_2/stgcn_model_state_dict_08-05-2025-09-15.pth"
+TEST_DESC = "Full test on Model 3.2"
 
-# File path for the .pth state dict file
-file_path = 'saved_models/series_3/3_2/stgcn_model_state_dict_08-05-2025-09-15.pth'
-
-# Unpack the state dict
-checkpoint = torch.load(file_path)
-
-# Initialise a new STGCN model
+# ----- Load the model -----
+checkpoint = torch.load(MODEL_PATH)
 model = STGCN(in_channels=1, hidden_channels=HIDDEN_CHANNELS, out_channels=1, num_nodes=NUM_NODES)
 
-# Load the state dict into the model
+# ----- Load the model state dict -----
 model.load_state_dict(checkpoint['model_state_dict'])
 
-# Grab the mean and std from the checkpoint
+# ----- Load the normalisation parameters (currently unused) -----
 mean = checkpoint['normalisation_mean']
 std = checkpoint['normalisation_std']
 
-# Test description
-test_description = "Full test on Model 3.4"
-
-# Provide a base date
-base_date = datetime(2000, 12, 2)
+# ----- Provide a base date for the time series -----
+base_date = datetime(2000, 11, 2)
 
 
 
 # ========== CREATE Time Truth Dictionary ==========
-# Dynamically creates a dictionary to hold ground truth vs. predicted values for each time step
+# ----- Dynamically creates a dictionary to hold ground truth vs. predicted values for each time step -----
 data = {
-    i: {
-		"pred_avgs": [],
-        "truth_avgs": []
-    }
-    for i in range(1, 289)
+	i: { "pred_avgs": [], "truth_avgs": [] } 
+	for i in range(1, 289)
 }
 
 
 
-# ========== LOAD DATA ==========
+# ========== LOAD DATA and Normaliser ==========
 dataset = load_dataset_for_stgcn(window_size=12, forecast_horizon=FORECAST_HORIZON)
 all_velocity_values = get_all_velocity_data()
 unused_train_set, test_set = train_test_split(dataset)
@@ -94,8 +92,8 @@ with torch.no_grad():
 		raw_mse_val_loss_total = raw_mse_val_loss_total + raw_mse_val_loss
 
 		# ----- Gather up the predictions and ground truths -----
-		preds = np.array(raw_y_val_hat_single)
-		truths = np.array(raw_y_val_target)
+		preds = np.asarray(raw_y_val_hat_single)
+		truths = np.asarray(raw_y_val_target)
 
 		# ----- Find the average across all preds and truths -----
 		pred_avg = np.mean(preds)
@@ -139,7 +137,7 @@ plot_ground_truth_and_predictions(
 	times = times,
 	ground_truth= avg_truth_avgs_over_time,
 	predictions= avg_pred_avgs_over_time,
-	test_number = "3.2",
+	test_number = TEST_NUMBER,
 	folder = 'graphs',
 	subfolder = 'full_test_set_validation'
 )
@@ -149,16 +147,16 @@ plot_ground_truth_and_predictions(
 # ========== SAVE TO FILE ==========
 timestamp = datetime.now().strftime("%d-%m-%Y-%H-%M")
 
-# Create the directory if it doesn't exist
+# ----- Create the output directory if it doesn't exist -----
 output_dir = "test_results/full_test_set_validation"
 os.makedirs(output_dir, exist_ok=True)
 
-# Define the file path
+# ----- Create the output file path -----
 output_file_path = os.path.join(output_dir, f"validation_results_{timestamp}.txt")
 
-# Write the loss values to the file
+# ----- Write the results to the file -----
 with open(output_file_path, "w") as file:
-	file.write(f"Test Description: {test_description}\n")
+	file.write(f"Test Description: {TEST_DESC}\n")
 	file.write(f"Raw RMSE Validation Loss: {raw_rmse_val_loss.item():.6f}\n")
 	file.write(f"Normalized RMSE Validation Loss: {norm_rmse_val_loss.item():.6f}\n")
 	file.write(f"Raw MSE Validation Loss: {avg_raw_mse_val_loss.item():.6f}\n")
