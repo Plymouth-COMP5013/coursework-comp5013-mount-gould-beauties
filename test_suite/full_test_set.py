@@ -1,11 +1,17 @@
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 # ========== IMPORTS ==========
 import torch
 from stgcn import STGCN
 from utilities.preprocessing import load_dataset_for_stgcn, train_test_split, subset_data, shuffle_dataset, get_all_velocity_data
 from mechanisms.normalisation import ZScoreNormaliser
 from tqdm import tqdm
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
+import numpy as np
+from utilities.plotting import plot_ground_truth_and_predictions
 
 
 
@@ -34,6 +40,21 @@ std = checkpoint['normalisation_std']
 # Test description
 test_description = "Full test on Model 3.4"
 
+# Provide a base date
+base_date = datetime(2000, 12, 2)
+
+
+
+# ========== CREATE Time Truth Dictionary ==========
+# Dynamically creates a dictionary to hold ground truth vs. predicted values for each time step
+data = {
+    i: {
+		"pred_avgs": [],
+        "truth_avgs": []
+    }
+    for i in range(1, 289)
+}
+
 
 
 # ========== LOAD DATA ==========
@@ -48,6 +69,7 @@ normaliser = ZScoreNormaliser(all_velocity_values)
 model.eval()
 norm_mse_val_loss_total = 0
 raw_mse_val_loss_total = 0
+time_of_day_identifier = 1
 with torch.no_grad():
 
 	# ----- Validation through each snapshot, as with the training loop -----
@@ -71,12 +93,56 @@ with torch.no_grad():
 		raw_mse_val_loss = torch.mean((raw_y_val_hat_single - raw_y_val_target) ** 2)
 		raw_mse_val_loss_total = raw_mse_val_loss_total + raw_mse_val_loss
 
+		# ----- Gather up the predictions and ground truths -----
+		preds = np.array(raw_y_val_hat_single)
+		truths = np.array(raw_y_val_target)
+
+		# ----- Find the average across all preds and truths -----
+		pred_avg = np.mean(preds)
+		truth_avg = np.mean(truths)
+
+		# ----- Append the averages to the dictionary -----
+		data[time_of_day_identifier]["pred_avgs"].append(pred_avg)
+		data[time_of_day_identifier]["truth_avgs"].append(truth_avg)
+
+		# ----- Deal with incrementing the time of day identifier -----
+		time_of_day_identifier = time_of_day_identifier + 1
+		if time_of_day_identifier > 288:
+			time_of_day_identifier = 1
+
 # ----- RMSE calculation -----
 avg_raw_mse_val_loss = raw_mse_val_loss_total / (time_step + 1)
 avg_norm_mse_val_loss = norm_mse_val_loss_total / (time_step + 1)
 
 raw_rmse_val_loss = torch.sqrt(avg_raw_mse_val_loss)
 norm_rmse_val_loss = torch.sqrt(avg_norm_mse_val_loss)
+
+# ----- Generate times in 5-min intervals -----
+times = [base_date + timedelta(minutes=5 * i) for i in range(288)]
+
+# ----- Average predictions at each time step -----
+avg_pred_avgs_over_time = []
+for i in range(1, 289):
+		pred_avgs = data[i]["pred_avgs"]
+		avg_pred_avgs = np.mean(pred_avgs)
+		avg_pred_avgs_over_time.append(avg_pred_avgs)
+
+# ----- Average truths at each time step -----
+avg_truth_avgs_over_time = []
+for i in range(1, 289):
+		truth_avgs = data[i]["truth_avgs"]
+		avg_truth_avgs = np.mean(truth_avgs)
+		avg_truth_avgs_over_time.append(avg_truth_avgs)
+
+# ----- Plotting the ground truth and predictions -----
+plot_ground_truth_and_predictions(
+	times = times,
+	ground_truth= avg_truth_avgs_over_time,
+	predictions= avg_pred_avgs_over_time,
+	test_number = "3.2",
+	folder = 'graphs',
+	subfolder = 'full_test_set_validation'
+)
 
 
 
