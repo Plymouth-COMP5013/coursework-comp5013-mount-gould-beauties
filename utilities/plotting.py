@@ -9,12 +9,13 @@ from datetime import datetime
 
 
 # # ========== PLOTTING FUNCTIONS ==========
-def plot_and_save_loss(losses, num_nodes, hidden_channels, learning_rate, subset_ratio, decay, decay_step, intended_epochs, test_number, extended_desc, folder = 'graphs', subfolder = None):
+def plot_and_save_loss(train_losses, val_losses, num_nodes, hidden_channels, learning_rate, subset_ratio, decay, decay_step, intended_epochs, test_number, extended_desc, folder = 'graphs', subfolder = None):
     """
     Plots training loss over epochs, then saves the plot to a specified folder.
     
     Args:
-        losses (list): List of loss values for each epoch.
+        train_losses (list): List of loss values for each epoch, obtained during training.
+        val_losses (list): List of validation loss values for each epoch, obtained during validation.
         num_nodes (int): Number of nodes in the graph.
         hidden_channels (int): Number of hidden channels in the model.
         learning_rate (float): Learning rate used in training.
@@ -38,27 +39,28 @@ def plot_and_save_loss(losses, num_nodes, hidden_channels, learning_rate, subset
 
     # Set up the plot
     plt.figure(figsize=(12, 7))
-    plt.plot(range(1, len(losses) + 1), losses, marker='o')
+    plt.plot(range(1, len(train_losses) + 1), train_losses, color='grey', label='Training Loss', marker='o')
+    plt.plot(range(1, len(val_losses) + 1), val_losses, color='orange', label='Validation Loss', marker='o')
     plt.title(f"STGCN Training Loss (Test {test_number})")
     plt.suptitle(f"Generated on {timestamp_str}", fontsize=10)
     plt.xlabel("Epoch")
     plt.ylabel("Root Mean Squared Error (RMSE)")
     plt.grid(True)
-    plt.ylim(0, 0.3)
-	  # Convert subset ratio to percentage
+    plt.legend(loc='upper right')
+    # Convert subset ratio to percentage
     subset_ratio_percentage = subset_ratio * 100
 
     # Add key parameters as text at the bottom
     text_str = (
-        f"Number of Nodes: {num_nodes}    "
+        f"Nodes: {num_nodes}    "
         f"Hidden Channels: {hidden_channels}    "
         f"Learning Rate: {learning_rate}    "
         f"Subset Ratio: {subset_ratio_percentage}%   "
         f"Decay: {decay}    "
         f"Decay Step: {decay_step}    "
         f"Intended Epochs: {intended_epochs}    "
-        f"Stopped at Epoch: {len(losses)}    "
-        f"Final Loss: {losses[-1]:.4f}"
+        f"Stopped at: Epoch {len(train_losses)}    "
+        f"Final Loss: {val_losses[-1]:.4f}"
     )
     plt.figtext(0.5, -0.05, text_str, wrap=True, horizontalalignment='center', fontsize=9, color='gray')
 

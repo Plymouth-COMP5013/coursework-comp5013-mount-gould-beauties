@@ -1,5 +1,5 @@
 # Author: Reef Lakin
-# Last Modified: 29.04.2025
+# Last Modified: 07.05.2025
 # Description: A PyTorch implementation of the Spatio-Temporal Graph Convolutional Network (ST-GCN) for traffic forecasting. 
 # Helpful Links:
 #   https://github.com/benedekrozemberczki/pytorch_geometric_temporal/blob/master/torch_geometric_temporal/nn/attention/stgcn.py
@@ -45,43 +45,3 @@ class STGCN(torch.nn.Module):
         x = F.relu(x)
         x = self.final_linear(x)
         return x
-
-
-# ========== TRAINING Method ==========
-def train_model(model, loader, optimizer, loss_fn):
-    model.train()
-    total_loss = 0
-    for snapshot in loader:
-        x = snapshot.x.unsqueeze(0)  # shape: [1, T, N, F]
-        y = snapshot.y.unsqueeze(0)  # shape: [1, N]
-        edge_index = snapshot.edge_index
-        edge_weight = snapshot.edge_weight
-
-        # x = x.permute(0, 1, 2, 3)
-        out = model(x, edge_index, edge_weight).squeeze(-1)  # shape: [1, N]
-
-        loss = loss_fn(out, y)
-        loss.backward()
-        optimizer.step()
-        optimizer.zero_grad()
-
-        total_loss += loss.item()
-    return total_loss / loader.snapshot_count
-
-
-# ========== EVALUATION Method ==========
-def evaluate_model(model, loader, loss_fn):
-    model.eval()
-    total_loss = 0
-    with torch.no_grad():
-        for snapshot in loader:
-            x = snapshot.x.unsqueeze(0)
-            y = snapshot.y.unsqueeze(0)
-            edge_index = snapshot.edge_index
-            edge_weight = snapshot.edge_weight
-
-            # x = x.permute(0, 1, 2, 3)
-            out = model(x, edge_index, edge_weight).squeeze(-1)
-            loss = loss_fn(out, y)
-            total_loss += loss.item()
-    return total_loss / loader.snapshot_count

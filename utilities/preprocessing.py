@@ -1,15 +1,18 @@
 import pandas as pd
+import random
 import numpy as np
+import torch
 from torch_geometric_temporal.signal import StaticGraphTemporalSignal
 from torch_geometric_temporal.signal.train_test_split import temporal_signal_split
 
 
-def load_dataset_for_stgcn(window_size=12):
+def load_dataset_for_stgcn(window_size=12, forecast_horizon=3):
     """
     Load PeMSD7 traffic dataset into a StaticGraphTemporalSignal object.
 
     Args:
         window_size (int): Number of time steps to use as features before predicting next step. Default is 12 (representing 1 hour with 5-min intervals)
+        forecast_horizon (int): Number of time steps to predict. Default is 3 (i.e., in the next 15 minutes)
 
     Returns:
         StaticGraphTemporalSignal: Temporal graph data loader
@@ -46,7 +49,7 @@ def load_dataset_for_stgcn(window_size=12):
     targets = []
 
     # For each valid time window
-    for t in range(num_time_steps - window_size):
+    for t in range(num_time_steps - window_size - forecast_horizon + 1):
         # Features: window_size previous time steps for all nodes
         # Shape: (num_nodes, window_size)
         feature_window = velocity_matrix[t : t + window_size, :].T
@@ -54,7 +57,7 @@ def load_dataset_for_stgcn(window_size=12):
 
         # Target: next time step after the window for all nodes
         # Shape: (num_nodes, 1)
-        target = velocity_matrix[t + window_size, :].reshape(num_nodes, 1)
+        target = velocity_matrix[t + window_size + forecast_horizon - 1, :].reshape(num_nodes, 1)
         targets.append(target)
 
     # Convert to StaticGraphTemporalSignal
@@ -68,8 +71,8 @@ def load_dataset_for_stgcn(window_size=12):
     return dataset
 
 
-# This is deprecated, but kept for reference
-def split_dataset(dataset, train_ratio=0.8, validation_split=0.5):
+# This is DEPRECATED, but kept for reference
+def split_dataset(dataset, train_ratio = 0.8, validation_split = 0.5):
     """
     Split the dataset into training and testing sets.
 
@@ -83,10 +86,10 @@ def split_dataset(dataset, train_ratio=0.8, validation_split=0.5):
     """
 
     # Split the dataset into training and testing sets
-    train_dataset, test_dataset = temporal_signal_split(dataset, train_ratio=train_ratio)
+    train_dataset, test_dataset = temporal_signal_split(dataset, train_ratio = train_ratio)
 
     # Further split the test dataset into testing and validation sets
-    test_dataset, val_dataset = temporal_signal_split(test_dataset, train_ratio=validation_split)
+    test_dataset, val_dataset = temporal_signal_split(test_dataset, train_ratio = validation_split)
 
     # Return the datasets
     return train_dataset, test_dataset, val_dataset
@@ -105,7 +108,7 @@ def train_test_split(dataset):
     """
 
     # Split the dataset into training and testing sets
-    train_dataset, test_dataset = temporal_signal_split(dataset, train_ratio=0.5)
+    train_dataset, test_dataset = temporal_signal_split(dataset, train_ratio = 0.5)
 
     # Return the datasets
     return train_dataset, test_dataset
@@ -124,9 +127,7 @@ def subset_data(dataset, subset_ratio):
     """
 
     # Split the dataset into subset and remaining
-    subset_dataset, remaining_dataset = temporal_signal_split(
-        dataset, train_ratio=subset_ratio
-    )
+    subset_dataset, remaining_dataset = temporal_signal_split(dataset, train_ratio = subset_ratio)
 
     # Return the subset dataset
     return subset_dataset
@@ -153,3 +154,76 @@ def train_test_subset(dataset, subset_ratio):
 
     # Return the training and testing subsets
     return train_subset, test_subset
+
+
+def shuffle_dataset(dataset, randomisation_offset = 1):
+    """
+    Shuffle the dataset, which is likely going to be the training subset.
+    
+    Args:
+        dataset (StaticGraphTemporalSignal): The dataset to shuffle.
+        randomisation_offset (int): The offset to use for randomisation. Use the epoch number to shuffle the dataset differently each time.
+
+    Returns:
+        StaticGraphTemporalSignal: The shuffled dataset.
+    """
+
+    # Extract all of the StaticGraphTemporalSignal's attributes (copying features and targets to avoid modifying the original dataset)
+    edge_index = dataset.edge_index
+    edge_weight = dataset.edge_weight
+    features = dataset.features.copy()
+    targets = dataset.targets.copy()
+
+    # Special number
+    special_number = 6122003
+
+    # Random seed so both the features and targets are shuffled in the same way
+    np.random.seed(special_number + randomisation_offset)
+
+    # Convert features and targets to numpy arrays
+    features = np.array(features)
+    targets = np.array(targets)
+
+    # Generate a random permutation of the indices
+    permutation = np.random.permutation(len(features))
+
+    # Shuffle the features and targets using the permutation
+    features = features[permutation]
+    targets = targets[permutation]
+
+    # Reconstruct the dataset
+    shuffled_dataset = StaticGraphTemporalSignal(
+        edge_index=edge_index,
+        edge_weight=edge_weight,
+        features=features,
+        targets=targets,
+    )
+
+    # Print a few examples of the shuffled dataset (commented out for debugging)
+    # print("Shuffled dataset examples:")
+    # for i in range(6):
+    #     print(f"Feature {i}: {shuffled_dataset.features[i][0]}")
+    #     print(f"Target {i}: {shuffled_dataset.targets[i][0]}")
+    #     print()
+
+    # Return the shuffled dataset
+    return shuffled_dataset
+
+
+def get_all_velocity_data():
+    """
+    Load the velocity data from the PeMSD7 dataset, and return it as a numpy array.
+
+    Returns:
+        torch.Tensor: The velocity data as a 1D tensor.
+    """
+
+    # Load the velocity data
+    velocity_df = pd.read_csv("dataset/PeMSD7_V_228.csv", header=None)
+    velocity_matrix = velocity_df.values  # Shape: (12672, 228)
+
+    # Flatten the velocity matrix to a 1D array
+    velocity_matrix = velocity_matrix.flatten()
+
+    # Conver to a tensor and return
+    return torch.tensor(velocity_matrix, dtype=torch.float32)
