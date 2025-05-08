@@ -156,30 +156,55 @@ def train_test_subset(dataset, subset_ratio):
     return train_subset, test_subset
 
 
-def shuffle_dataset(dataset):
+def shuffle_dataset(dataset, randomisation_offset = 1):
     """
     Shuffle the dataset, which is likely going to be the training subset.
     
     Args:
         dataset (StaticGraphTemporalSignal): The dataset to shuffle.
+        randomisation_offset (int): The offset to use for randomisation. Use the epoch number to shuffle the dataset differently each time.
 
     Returns:
         StaticGraphTemporalSignal: The shuffled dataset.
     """
 
-    # Convert the dataset to a list
-    dataset_as_list = list(dataset)
+    # Extract all of the StaticGraphTemporalSignal's attributes (copying features and targets to avoid modifying the original dataset)
+    edge_index = dataset.edge_index
+    edge_weight = dataset.edge_weight
+    features = dataset.features.copy()
+    targets = dataset.targets.copy()
 
-    # Shuffle the list
-    random.shuffle(dataset_as_list)
+    # Special number
+    special_number = 6122003
 
-    # Convert the list back to a StaticGraphTemporalSignal object
+    # Random seed so both the features and targets are shuffled in the same way
+    np.random.seed(special_number + randomisation_offset)
+
+    # Convert features and targets to numpy arrays
+    features = np.array(features)
+    targets = np.array(targets)
+
+    # Generate a random permutation of the indices
+    permutation = np.random.permutation(len(features))
+
+    # Shuffle the features and targets using the permutation
+    features = features[permutation]
+    targets = targets[permutation]
+
+    # Reconstruct the dataset
     shuffled_dataset = StaticGraphTemporalSignal(
-        edge_index=dataset.edge_index,
-        edge_weight=dataset.edge_weight,
-        features=[snapshot.x for snapshot in dataset_as_list],
-        targets=[snapshot.y for snapshot in dataset_as_list],
+        edge_index=edge_index,
+        edge_weight=edge_weight,
+        features=features,
+        targets=targets,
     )
+
+    # Print a few examples of the shuffled dataset (commented out for debugging)
+    # print("Shuffled dataset examples:")
+    # for i in range(6):
+    #     print(f"Feature {i}: {shuffled_dataset.features[i][0]}")
+    #     print(f"Target {i}: {shuffled_dataset.targets[i][0]}")
+    #     print()
 
     # Return the shuffled dataset
     return shuffled_dataset

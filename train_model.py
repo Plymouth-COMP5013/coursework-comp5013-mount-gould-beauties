@@ -26,31 +26,31 @@ SUBSET_RATIO = 0.1
 LEARNING_RATE = 0.001
 
 # Number of hidden channels in the model. A good value is usually between 16 and 64. Higher numbers can lead to overfitting or longer training times.
-HIDDEN_CHANNELS = 64
+HIDDEN_CHANNELS = 128
 
 # Number of epochs to train the model. A good value is usually between 10 and 50, or lower for quick tests.
-EPOCHS = 70
+EPOCHS = 100
 
 # Nuber of nodes in the dataset. This is usually fixed for a given dataset. Currently I'm only supporting 288 nodes.
 NUM_NODES = 228
 
 # Learning rate decay step size. A good value is usually between 3 and 8 if using aggressive decay.
-STEP_SIZE = 5
+STEP_SIZE = 15
 
 # Gamme for learning rate decay. A good value is usually between 0.3 and 0.9.
-GAMMA = 0.8
+GAMMA = 0.9
 
 # Sub-folder for the graphs. If None is provided, the graphs will be saved in the highest level of the 'graphs' folder.
-GRAPH_SUBFOLDER = "series_2"
+GRAPH_SUBFOLDER = "series_3"
 
 # Test number for the experiment. Can be used to identify the test run and can be a string.
-TEST_NUMBER = "2.5"
+TEST_NUMBER = "3.3"
 
 # Extended description to be placed at the bottom of the plot.
-EXTENDED_DESC = "Another test with larger patience and slightly altered learning rate decay settings."
+EXTENDED_DESC = "An experiment with a unusually high number of hidden channels, to see what happens."
 
 # Patience for early stopping (i.e., how many epochs to wait before stopping if no improvement is seen). 
-PATIENCE = 20
+PATIENCE = 10
 
 # The number of 5-minute intervals ahead to predict. 3 means 15 minutes ahead, 6 means 30 minutes ahead, etc. DO NOT INCREASE BEYOND 4 (YET)!
 FORECAST_HORIZON = 3
@@ -74,7 +74,7 @@ optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
 scheduler = StepLR(optimizer, step_size=STEP_SIZE, gamma=GAMMA)
 loss_fn = nn.MSELoss()
 num_epochs = EPOCHS
-early_stopping = EarlyStopping(patience=PATIENCE, min_delta=0.002)
+early_stopping = EarlyStopping(patience=PATIENCE, min_delta=0.001)
 normaliser = ZScoreNormaliser(all_velocity_values)
 
 
@@ -93,11 +93,11 @@ for epoch in tqdm(range(num_epochs), desc="Training Epochs"):
     all_targets = []
 
     # ----- Shuffle and subset the dataset -----
-    training_subset = shuffle_dataset(train_set)
-    training_subset = subset_data(train_set, subset_ratio=SUBSET_RATIO)
+    training_subset = shuffle_dataset(train_set, epoch)
+    training_subset = subset_data(training_subset, subset_ratio=SUBSET_RATIO)
 
-    testing_subset = shuffle_dataset(test_set)
-    testing_subset = subset_data(test_set, subset_ratio=SUBSET_RATIO)
+    testing_subset = shuffle_dataset(test_set, epoch)
+    testing_subset = subset_data(testing_subset, subset_ratio=SUBSET_RATIO)
 
     # ----- Training through each snapshot -----
     for time_step, snapshot in tqdm(enumerate(training_subset), desc="Training In Progress", leave=False):
@@ -129,12 +129,12 @@ for epoch in tqdm(range(num_epochs), desc="Training Epochs"):
     avg_norm_mse_loss = norm_mse_loss_total / (time_step + 1)
 
     avg_raw_rmse_loss = torch.sqrt(avg_raw_mse_loss)
-    avg_norm_mse_loss = torch.sqrt(avg_norm_mse_loss)
+    avg_norm_rmse_loss = torch.sqrt(avg_norm_mse_loss)
 
     training_losses.append(avg_raw_rmse_loss.item())
 
     # ----- Backpropagation and optimisation -----
-    avg_norm_mse_loss.backward()
+    avg_norm_rmse_loss.backward()
     optimizer.step()
     optimizer.zero_grad()
     scheduler.step()
@@ -189,11 +189,11 @@ for epoch in tqdm(range(num_epochs), desc="Training Epochs"):
     # ----- Print the training loss -----
     print(f"Epoch {epoch + 1}/{num_epochs}, Raw Training Loss: {avg_raw_rmse_loss.item():.4f}, Normalised Training Loss: {avg_norm_mse_loss.item():.4f}")
 
-    # ----- Sample (15) predictions and targets -----
+    # ----- Sample (10) predictions and targets -----
     all_predictions = torch.cat(all_predictions)
     all_targets = torch.cat(all_targets)
 
-    sample_indices = torch.randperm(all_predictions.size(0))[:15]
+    sample_indices = torch.randperm(all_predictions.size(0))[:10]
     sampled_predictions = all_predictions[sample_indices]
     sampled_targets = all_targets[sample_indices]
 
