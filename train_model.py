@@ -20,7 +20,7 @@ from mechanisms.normalisation import ZScoreNormaliser
 
 # ========== OPTIONS ==========
 # Ratio of the dataset to use for training and validation. Example: 0.03 = 3% of the dataset.
-SUBSET_RATIO = 0.3
+SUBSET_RATIO = 0.4
 
 # Learning rate for the optimizer. A good value is 0.001, and will decrease with the learning rate scheduler.
 LEARNING_RATE = 0.001
@@ -50,13 +50,13 @@ NUM_NODES = 228
 GRAPH_SUBFOLDER = "series_3"
 
 # Test number for the experiment. Can be used to identify the test run on a loss plot. Doesn't have to be a number, can be anything.
-TEST_NUMBER = "3.5"
+TEST_NUMBER = "3.7"
 
 # Extended description to be placed at the bottom of the plot. Describe what this test is about, maybe what you've changed. Again, can be anything.
-EXTENDED_DESC = "An assessment to see if a learning rate warmup mechanic can help the model to generalise better."
+EXTENDED_DESC = "A first test of node weight normalisation, to see if it works."
 
 # Patience for early stopping (i.e., how many epochs to wait before stopping if no improvement is seen). Kills the training if validation loss doesn't improve for this many epochs.
-PATIENCE = 4
+PATIENCE = 6
 
 # The improvement threshold for early stopping. If the validation loss doesn't improve by this amount, the training will stop.
 MIN_DELTA = 0.001

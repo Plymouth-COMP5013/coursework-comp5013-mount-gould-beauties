@@ -32,12 +32,17 @@ def load_dataset_for_stgcn(window_size=12, forecast_horizon=3):
     # Convert adjacency matrix to edge_index and edge_weight format
     for i in range(adj_matrix.shape[0]):
         for j in range(adj_matrix.shape[1]):
-            if adj_matrix[i, j] > 0:  # If there is an edge, otherwise skip
-                edge_indices.append([i, j])
-                edge_weights.append(adj_matrix[i, j])
+            edge_indices.append([i, j])
+            edge_weights.append(adj_matrix[i, j])
 
     edge_index = np.array(edge_indices).T  # Shape: (2, num_edges)
     edge_weight = np.array(edge_weights)  # Shape: (num_edges,)
+
+    # Compute similarity 
+    similarity_weights = 1 / (edge_weight + 1e-5)
+
+    # Normalize the weights
+    similarity_weights = similarity_weights / np.sum(similarity_weights)
 
     # Create temporal features and targets
     num_nodes = velocity_matrix.shape[1]  # 228 nodes (columns)
