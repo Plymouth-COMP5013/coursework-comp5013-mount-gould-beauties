@@ -12,7 +12,7 @@ def gconv(x, theta, Ks, c_in, c_out):
     x_mul = tf.reshape(tf.matmul(x_tmp, kernel), [-1, c_in, Ks, n])  # [B, c_in, Ks, N]
     x_ker = tf.reshape(tf.transpose(x_mul, [0,3,1,2]), [-1, c_in*Ks])
     x_gconv = tf.reshape(tf.matmul(x_ker, theta), [-1, n, c_out])    # [B, N, c_out] 
-    
+    return x_gconv
 
 #Layer Normalization
 def layer_norm(x, scope):

@@ -1,6 +1,6 @@
 # main.py
 
-# ── Disable eager execution BEFORE anything else ──
+#disable eaager execution 
 import tensorflow as tf
 tf.compat.v1.disable_eager_execution()
 
