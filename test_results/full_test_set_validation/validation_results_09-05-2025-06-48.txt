@@ -1,0 +1,5 @@
+Test Description: Full test on Model 3.5
+Raw RMSE Validation Loss: 7.850501
+Normalized RMSE Validation Loss: 0.582241
+Raw MSE Validation Loss: 61.630367
+Normalized MSE Validation Loss: 0.339004

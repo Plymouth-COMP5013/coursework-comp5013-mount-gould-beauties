@@ -12,50 +12,59 @@ import torch.nn as nn
 import torch.optim as optim
 from datetime import datetime
 from tqdm import tqdm
-from torch.optim.lr_scheduler import StepLR
+from torch.optim.lr_scheduler import LambdaLR, StepLR
 from mechanisms.early_stopping import EarlyStopping
 from mechanisms.normalisation import ZScoreNormaliser
 
 
 
 # ========== OPTIONS ==========
-# Ratio of the dataset to use for the subset to test on. Example: 0.03 = 3% of the dataset
-SUBSET_RATIO = 0.1
+# Ratio of the dataset to use for training and validation. Example: 0.03 = 3% of the dataset.
+SUBSET_RATIO = 0.3
 
-# Learning rate for the optimizer. A good value is usually between 0.001 and 0.01
+# Learning rate for the optimizer. A good value is 0.001, and will decrease with the learning rate scheduler.
 LEARNING_RATE = 0.001
 
-# Number of hidden channels in the model. A good value is usually between 16 and 64. Higher numbers can lead to overfitting or longer training times.
-HIDDEN_CHANNELS = 128
+# Gamma for learning rate decay. A good value is between 0.7 and 0.9. Lower values than this will mean a more aggressive decay.
+GAMMA = 0.8
 
-# Number of epochs to train the model. A good value is usually between 10 and 50, or lower for quick tests.
-EPOCHS = 100
+# Learning rate decay step size. After how many epochs should the learning rate decay? Smaller values means it will decay quicker.
+STEP_SIZE = 5
 
-# Nuber of nodes in the dataset. This is usually fixed for a given dataset. Currently I'm only supporting 288 nodes.
+# The number of epochs the learning rate scheduler takes to "warm-up".
+WARMUP_EPOCHS = 5
+
+# Whether or not the model should use warmup. If False, the learning rate will decay at the STEP_SIZE interval.
+USE_WARMUP = True
+
+# Number of hidden channels in the model. A good value is usually between 16 and 64. Higher numbers have only seen worse performance and longer training times.
+HIDDEN_CHANNELS = 24
+
+# Number of epochs to train the model. A good value is around 50, but early stopping may trigger the model to stop training earlier.
+EPOCHS = 50
+
+# Number of nodes in the dataset. Currently only 228 nodes are supported.
 NUM_NODES = 228
 
-# Learning rate decay step size. A good value is usually between 3 and 8 if using aggressive decay.
-STEP_SIZE = 15
-
-# Gamme for learning rate decay. A good value is usually between 0.3 and 0.9.
-GAMMA = 0.9
-
-# Sub-folder for the graphs. If None is provided, the graphs will be saved in the highest level of the 'graphs' folder.
+# Sub-folder for the graphs. If None is provided, the graphs will be saved in the highest level of the 'graphs' folder. Can be anything.
 GRAPH_SUBFOLDER = "series_3"
 
-# Test number for the experiment. Can be used to identify the test run and can be a string.
-TEST_NUMBER = "3.3"
+# Test number for the experiment. Can be used to identify the test run on a loss plot. Doesn't have to be a number, can be anything.
+TEST_NUMBER = "3.5"
 
-# Extended description to be placed at the bottom of the plot.
-EXTENDED_DESC = "An experiment with a unusually high number of hidden channels, to see what happens."
+# Extended description to be placed at the bottom of the plot. Describe what this test is about, maybe what you've changed. Again, can be anything.
+EXTENDED_DESC = "An assessment to see if a learning rate warmup mechanic can help the model to generalise better."
 
-# Patience for early stopping (i.e., how many epochs to wait before stopping if no improvement is seen). 
-PATIENCE = 10
+# Patience for early stopping (i.e., how many epochs to wait before stopping if no improvement is seen). Kills the training if validation loss doesn't improve for this many epochs.
+PATIENCE = 4
+
+# The improvement threshold for early stopping. If the validation loss doesn't improve by this amount, the training will stop.
+MIN_DELTA = 0.001
 
 # The number of 5-minute intervals ahead to predict. 3 means 15 minutes ahead, 6 means 30 minutes ahead, etc. DO NOT INCREASE BEYOND 4 (YET)!
 FORECAST_HORIZON = 3
 
-# Model saving options; would we like to save the model's architecture and state dictionary?
+# Model saving options; would we like to save the model's architecture and state dictionary to the root directory?
 SAVE_ARCHITECTURE = True
 SAVE_STATE_DICT = True
 
@@ -68,14 +77,31 @@ train_set, test_set = train_test_split(dataset)
 
 
 
+# ========== LEARNING RATE FUNCTION ==========
+def lr_lambda(epoch):
+
+    # Linear warmup for the first WARMUP_EPOCHS epochs
+    if epoch < WARMUP_EPOCHS:
+        return float(epoch + 1) / WARMUP_EPOCHS 
+    
+    # After warmup, use the step decay
+    else:
+        return GAMMA ** ((epoch - WARMUP_EPOCHS) // STEP_SIZE)
+
+
+
 # ========== SETUP ==========
 model = STGCN(in_channels=1, hidden_channels=HIDDEN_CHANNELS, out_channels=1, num_nodes=NUM_NODES)
 optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
-scheduler = StepLR(optimizer, step_size=STEP_SIZE, gamma=GAMMA)
 loss_fn = nn.MSELoss()
 num_epochs = EPOCHS
-early_stopping = EarlyStopping(patience=PATIENCE, min_delta=0.001)
+early_stopping = EarlyStopping(patience=PATIENCE, min_delta=MIN_DELTA)
 normaliser = ZScoreNormaliser(all_velocity_values)
+
+if USE_WARMUP:
+    scheduler = LambdaLR(optimizer, lr_lambda=lr_lambda)
+else:
+    scheduler = StepLR(optimizer, step_size=STEP_SIZE, gamma=GAMMA)
 
 
 

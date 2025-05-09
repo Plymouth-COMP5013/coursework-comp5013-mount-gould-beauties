@@ -1,9 +1,10 @@
 # Author: Reef Lakin
-# Last Modified: 30.04.2025
+# Last Modified: 08.05.2025
 # Description: Functions for plotting and saving neural network data.
 
 # # ========== IMPORTS ==========
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 import os
 from datetime import datetime
 
@@ -73,3 +74,49 @@ def plot_and_save_loss(train_losses, val_losses, num_nodes, hidden_channels, lea
     plt.savefig(save_path, bbox_inches="tight")
     plt.close()
     print(f"Saved training loss plot to {save_path}")
+
+
+def plot_ground_truth_and_predictions(times, ground_truth, predictions, test_number, folder = 'graphs', subfolder = None):
+    """
+    Plots ground truth and predictions over time, then saves the plot to a specified folder.
+    
+    Args:
+        times (list): List of time points.
+        ground_truth (list): List of ground truth values.
+        predictions (list): List of predicted values.
+        test_number (str): Test number for the experiment. Can be used to identify the test run and can be a string.
+        folder (str): Folder where the plot will be saved. Defaults to 'graphs'.
+    """
+    if not os.path.exists(folder):
+        os.makedirs(folder)
+    if subfolder:
+        folder = os.path.join(folder, subfolder)
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+
+    timestamp_str = datetime.now().strftime("%d-%m-%Y at %H:%M")
+    filename_time = datetime.now().strftime("%d-%m-%Y-%H-%M")
+
+    # Plot
+    plt.figure(figsize=(14, 6))
+    plt.plot(times, ground_truth, label="Ground Truth", linewidth=2)
+    plt.plot(times, predictions, label="Predicted", linestyle='--', linewidth=2)
+
+    # Format time on x-axis
+    plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%H:%M'))
+    plt.gca().xaxis.set_major_locator(mdates.HourLocator(interval=1))
+    plt.gcf().autofmt_xdate()  # Rotate x-axis labels for readability
+
+    # Labels and legend
+    plt.title("Average Speed over 24 Hours")
+    plt.suptitle(f"Test {test_number} - Generated on {timestamp_str}", fontsize=10)
+    plt.xlabel("Time of Day")
+    plt.ylabel("Speed (km/h)")
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+
+    save_path = os.path.join(folder, f"predictions_vs_ground_truth_{filename_time}.png")
+    plt.savefig(save_path, bbox_inches="tight")
+    plt.close()
+    print(f"Saved predictions vs ground truth plot to {save_path}")
