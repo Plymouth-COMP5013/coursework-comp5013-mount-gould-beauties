@@ -68,7 +68,7 @@ def load_dataset_for_stgcn(window_size=12, forecast_horizon=3):
     # Convert to StaticGraphTemporalSignal
     dataset = StaticGraphTemporalSignal(
         edge_index=edge_index,
-        edge_weight=edge_weight,
+        edge_weight=similarity_weights,
         features=features,
         targets=targets,
     )
