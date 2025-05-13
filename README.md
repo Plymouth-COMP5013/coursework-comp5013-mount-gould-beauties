@@ -1,6 +1,33 @@
 # COMP5013 PyTorch STGCN
 
-A custom STGCN repository for COMP5013, built using PyTorch and, more specifically, PyTorch Geometric Temporal.
+A custom STGCN repository for COMP5013, built using PyTorch and, more specifically, PyTorch Geometric Temporal. The "legacy" directory contains the original code from the research paper, and that has been built in TensorFlow. It includes Attention Mechanisms and is experimental.
+
+## Table of Contents
+
+- [Original Paper](#original-paper)
+- [Dataset](#dataset)
+  - [Test Data Import](#test-data-import)
+
+## Requirements
+
+This project has been built using Python of version `3.10.x`. It was built using the following packages:
+
+- `torch==2.7.0`
+- `torch-geometric==2.6.1`
+- `torch_geometric_temporal==0.56.0`
+- `numpy==2.2.5`
+- `pandas==2.2.3`
+- `scipy==1.15.2`
+- `tqdm==4.67.1`
+- `matplotlib==3.10.1`
+
+These are also stored within the `requirements.txt` file. You can install them using the following command:
+
+```bash
+pip install -r requirements.txt
+```
+
+If you are using a virtual environment, make sure to activate it before running the above command. It's recommended to use a virtual environment to avoid conflicts with other projects, especially if you are using different versions of the same packages.
 
 ## Original Paper
 
