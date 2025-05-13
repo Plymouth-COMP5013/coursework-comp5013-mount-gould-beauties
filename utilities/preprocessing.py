@@ -1,9 +1,9 @@
 import pandas as pd
-import random
 import numpy as np
 import torch
 from torch_geometric_temporal.signal import StaticGraphTemporalSignal
 from torch_geometric_temporal.signal.train_test_split import temporal_signal_split
+import copy
 
 
 def load_dataset_for_stgcn(window_size=12, forecast_horizon=3):
@@ -161,13 +161,12 @@ def train_test_subset(dataset, subset_ratio):
     return train_subset, test_subset
 
 
-def shuffle_dataset(dataset, randomisation_offset = 1):
+def shuffle_dataset(dataset):
     """
     Shuffle the dataset, which is likely going to be the training subset.
     
     Args:
         dataset (StaticGraphTemporalSignal): The dataset to shuffle.
-        randomisation_offset (int): The offset to use for randomisation. Use the epoch number to shuffle the dataset differently each time.
 
     Returns:
         StaticGraphTemporalSignal: The shuffled dataset.
@@ -176,14 +175,8 @@ def shuffle_dataset(dataset, randomisation_offset = 1):
     # Extract all of the StaticGraphTemporalSignal's attributes (copying features and targets to avoid modifying the original dataset)
     edge_index = dataset.edge_index
     edge_weight = dataset.edge_weight
-    features = dataset.features.copy()
-    targets = dataset.targets.copy()
-
-    # Special number
-    special_number = 6122003
-
-    # Random seed so both the features and targets are shuffled in the same way
-    np.random.seed(special_number + randomisation_offset)
+    features = copy.deepcopy(dataset.features)
+    targets = copy.deepcopy(dataset.targets)
 
     # Convert features and targets to numpy arrays
     features = np.array(features)

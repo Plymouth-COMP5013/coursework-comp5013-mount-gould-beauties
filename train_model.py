@@ -20,7 +20,7 @@ from mechanisms.normalisation import ZScoreNormaliser
 
 # ========== OPTIONS ==========
 # Ratio of the dataset to use for training and validation. Example: 0.03 = 3% of the dataset.
-SUBSET_RATIO = 0.2
+SUBSET_RATIO = 0.5
 
 # Learning rate for the optimizer. A good value is 0.001, and will decrease with the learning rate scheduler.
 LEARNING_RATE = 0.001
@@ -38,7 +38,7 @@ WARMUP_EPOCHS = 5
 USE_WARMUP = True
 
 # Number of hidden channels in the model. A good value is usually between 16 and 64. Higher numbers have only seen worse performance and longer training times.
-HIDDEN_CHANNELS = 32
+HIDDEN_CHANNELS = 24
 
 # Number of epochs to train the model. A good value is around 50, but early stopping may trigger the model to stop training earlier.
 EPOCHS = 20
@@ -50,10 +50,10 @@ NUM_NODES = 228
 GRAPH_SUBFOLDER = "series_3"
 
 # Test number for the experiment. Can be used to identify the test run on a loss plot. Doesn't have to be a number, can be anything.
-TEST_NUMBER = "3.8"
+TEST_NUMBER = "3.9"
 
 # Extended description to be placed at the bottom of the plot. Describe what this test is about, maybe what you've changed. Again, can be anything.
-EXTENDED_DESC = "The previous normalised weights experiment didn't work due to a bug. This is the first working test."
+EXTENDED_DESC = "Slight change to shuffling mechanism, and we're also moving back to MSE loss instead of RMSE."
 
 # Patience for early stopping (i.e., how many epochs to wait before stopping if no improvement is seen). Kills the training if validation loss doesn't improve for this many epochs.
 PATIENCE = 4
@@ -119,10 +119,10 @@ for epoch in tqdm(range(num_epochs), desc="Training Epochs"):
     all_targets = []
 
     # ----- Shuffle and subset the dataset -----
-    training_subset = shuffle_dataset(train_set, epoch)
+    training_subset = shuffle_dataset(train_set)
     training_subset = subset_data(training_subset, subset_ratio=SUBSET_RATIO)
 
-    testing_subset = shuffle_dataset(test_set, epoch)
+    testing_subset = shuffle_dataset(test_set)
     testing_subset = subset_data(testing_subset, subset_ratio=SUBSET_RATIO)
 
     # ----- Training through each snapshot -----
@@ -160,7 +160,7 @@ for epoch in tqdm(range(num_epochs), desc="Training Epochs"):
     training_losses.append(avg_raw_rmse_loss.item())
 
     # ----- Backpropagation and optimisation -----
-    avg_norm_rmse_loss.backward()
+    avg_norm_mse_loss.backward()
     optimizer.step()
     optimizer.zero_grad()
     scheduler.step()

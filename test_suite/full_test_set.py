@@ -26,9 +26,9 @@ from utilities.plotting import plot_ground_truth_and_predictions
 NUM_NODES = 228
 HIDDEN_CHANNELS = 24
 FORECAST_HORIZON = 3
-TEST_NUMBER = "3.5"
-MODEL_PATH = "saved_models/series_3/3_5/stgcn_model_state_dict_09-05-2025-02-28.pth"
-TEST_DESC = "Full test on Model 3.5"
+TEST_NUMBER = "3.9"
+MODEL_PATH = "saved_models/series_3/3_9/stgcn_model_state_dict_13-05-2025-19-01.pth"
+TEST_DESC = "Full Test on Model 3.9"
 
 # ----- Load the model -----
 checkpoint = torch.load(MODEL_PATH)
