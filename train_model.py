@@ -1,5 +1,5 @@
 # Author: Reef Lakin
-# Last Modified: 07.05.2025
+# Last Modified: 13.05.2025
 # Description: The main script for training our STGCN model on the traffic forecasting dataset.
 
 
@@ -29,34 +29,34 @@ LEARNING_RATE = 0.001
 GAMMA = 0.7
 
 # Learning rate decay step size. After how many epochs should the learning rate decay? Smaller values means it will decay quicker.
-STEP_SIZE = 3
+STEP_SIZE = 5
 
 # The number of epochs the learning rate scheduler takes to "warm-up".
 WARMUP_EPOCHS = 5
 
 # Whether or not the model should use warmup. If False, the learning rate will decay at the STEP_SIZE interval.
-USE_WARMUP = True
+USE_WARMUP = False
 
 # Number of hidden channels in the model. A good value is usually between 16 and 64. Higher numbers have only seen worse performance and longer training times.
 HIDDEN_CHANNELS = 24
 
 # Number of epochs to train the model. A good value is around 50, but early stopping may trigger the model to stop training earlier.
-EPOCHS = 20
+EPOCHS = 30
 
 # Number of nodes in the dataset. Currently only 228 nodes are supported.
 NUM_NODES = 228
 
 # Sub-folder for the graphs. If None is provided, the graphs will be saved in the highest level of the 'graphs' folder. Can be anything.
-GRAPH_SUBFOLDER = "series_3"
+GRAPH_SUBFOLDER = "series_4"
 
 # Test number for the experiment. Can be used to identify the test run on a loss plot. Doesn't have to be a number, can be anything.
-TEST_NUMBER = "3.9"
+TEST_NUMBER = "3.10"
 
 # Extended description to be placed at the bottom of the plot. Describe what this test is about, maybe what you've changed. Again, can be anything.
-EXTENDED_DESC = "Slight change to shuffling mechanism, and we're also moving back to MSE loss instead of RMSE."
+EXTENDED_DESC = "Loading Model 3.9 back in and giving it more time to train. First time trying out this feature. Let's see how it goes."
 
 # Patience for early stopping (i.e., how many epochs to wait before stopping if no improvement is seen). Kills the training if validation loss doesn't improve for this many epochs.
-PATIENCE = 4
+PATIENCE = 5
 
 # The improvement threshold for early stopping. If the validation loss doesn't improve by this amount, the training will stop.
 MIN_DELTA = 0.005
@@ -67,6 +67,9 @@ FORECAST_HORIZON = 3
 # Model saving options; would we like to save the model's architecture and state dictionary to the root directory?
 SAVE_ARCHITECTURE = True
 SAVE_STATE_DICT = True
+
+# Add a relative path to a pretrained model to load it in. If None, the model will be trained from scratch.
+PRETRAINED_MODEL_PATH = "saved_models/series_3/3_9/stgcn_model_state_dict_13-05-2025-19-01.pth"
 
 
 
@@ -87,13 +90,23 @@ def lr_lambda(epoch):
     # After warmup, use the step decay
     else:
         return GAMMA ** ((epoch - WARMUP_EPOCHS) // STEP_SIZE)
+    
+
+
+# ========== LOAD MODEL ==========
+if PRETRAINED_MODEL_PATH is not None:
+    checkpoint = torch.load(PRETRAINED_MODEL_PATH)
+    model = STGCN(in_channels=1, hidden_channels=HIDDEN_CHANNELS, out_channels=1, num_nodes=NUM_NODES)
+    model.load_state_dict(checkpoint['model_state_dict'])
+    print("Pretrained model loaded successfully.")
+else:
+    model = STGCN(in_channels=1, hidden_channels=HIDDEN_CHANNELS, out_channels=1, num_nodes=NUM_NODES)
+    print("No pretrained model found. Training from scratch.")
 
 
 
 # ========== SETUP ==========
-model = STGCN(in_channels=1, hidden_channels=HIDDEN_CHANNELS, out_channels=1, num_nodes=NUM_NODES)
 optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
-loss_fn = nn.MSELoss()
 num_epochs = EPOCHS
 early_stopping = EarlyStopping(patience=PATIENCE, min_delta=MIN_DELTA)
 normaliser = ZScoreNormaliser(all_velocity_values)
