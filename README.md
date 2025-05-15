@@ -92,12 +92,12 @@ Here's a selection of validation loss graphs from the training runs. The graphs 
 
 This section explores how each hyperparameter in the PyTorch model was assessed and tested. Most hyperparameters are set at the top of the `train_model.py` file in a section labelled “Options”. Each one is explained in more depth here.
 
-### Subset Ratio
+### Subset Ratio (Deprecated)
 
 **Synopsis:** This is a decimal number indicating what proportion of the dataset should be split for training.  
 **Example:** A value of `0.15` indicates 15% of the full dataset will be used for each epoch.
 
-In each training attempt, it may not be desirable to test on the entire set. This could be for quick iteration on a smaller subset. It also simulates pseudo-mini-batching, especially valuable during early prototyping on limited hardware. A value between `0.3` and `0.4` offered substantial time savings while still providing a varied and useful subset.
+In each training attempt, it may not be desirable to test on the entire set. This could be for quick iteration on a smaller subset. It also simulates pseudo-mini-batching, especially valuable during early prototyping on limited hardware. A value between `0.3` and `0.4` offered substantial time savings while still providing a varied and useful subset. In v2, this was deprecated in favour of a more robust mini-batching approach.
 
 ---
 

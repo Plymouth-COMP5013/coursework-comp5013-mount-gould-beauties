@@ -1,5 +1,5 @@
 # Author: Reef Lakin
-# Last Modified: 13.05.2025
+# Last Modified: 15.05.2025
 # Description: The main script for training our STGCN model on the traffic forecasting dataset.
 
 
@@ -18,9 +18,16 @@ from mechanisms.normalisation import ZScoreNormaliser
 
 
 
-# ========== OPTIONS ==========
-# Ratio of the dataset to use for training and validation. Example: 0.03 = 3% of the dataset.
-SUBSET_RATIO = 0.33
+# ========== LEGACY OPTIONS ==========
+# The following options are legacy options that are officially deprecated and might get removed in the future.
+
+# Subset Ratio:- Portion of the dataset to use for training and validation. Example: 0.03 = 3% of the dataset. Turn off by setting to None.
+SUBSET_RATIO = None
+
+
+
+# ========== MAIN OPTIONS ==========
+# These are the main options for the STGCN training flow.
 
 # Learning rate for the optimizer. A good value is 0.001, and will decrease with the learning rate scheduler.
 LEARNING_RATE = 0.001
@@ -133,10 +140,12 @@ for epoch in tqdm(range(num_epochs), desc="Training Epochs"):
 
     # ----- Shuffle and subset the dataset -----
     training_subset = shuffle_dataset(train_set)
-    training_subset = subset_data(training_subset, subset_ratio=SUBSET_RATIO)
+    if SUBSET_RATIO is not None:
+        training_subset = subset_data(training_subset, subset_ratio=SUBSET_RATIO)
 
     testing_subset = shuffle_dataset(test_set)
-    testing_subset = subset_data(testing_subset, subset_ratio=SUBSET_RATIO)
+    if SUBSET_RATIO is not None:
+        testing_subset = subset_data(testing_subset, subset_ratio=SUBSET_RATIO)
 
     # ----- Training through each snapshot -----
     for time_step, snapshot in tqdm(enumerate(training_subset), desc="Training In Progress", leave=False):
@@ -253,7 +262,6 @@ plot_and_save_loss(
     num_nodes=NUM_NODES,
     hidden_channels=HIDDEN_CHANNELS,
     learning_rate=LEARNING_RATE,
-    subset_ratio=SUBSET_RATIO,
     decay=GAMMA,
     decay_step=STEP_SIZE,
     intended_epochs=EPOCHS,
@@ -261,32 +269,6 @@ plot_and_save_loss(
     extended_desc=EXTENDED_DESC,
     folder='graphs',
     subfolder=GRAPH_SUBFOLDER)
-
-
-
-# ========== OLD TESTING METHOD (Currently Under Construction) ==========
-# model.eval()
-
-# mse_loss = 0
-# rmse_loss = 0
-# with torch.no_grad():
-#     for time_step, snapshot in tqdm(enumerate(testing_subset), desc="Testing Batches", leave=False):
-#         x = snapshot.x.T.unsqueeze(0).unsqueeze(-1) # [1, 12, 228, 1]
-#         x = normaliser.normalise(x)
-#         y_hat = model(x, snapshot.edge_index, snapshot.edge_weight) # [1, 4, 228, 1]
-#         y_hat_single = y_hat[:, FORECAST_HORIZON - 1, :, :].squeeze() # [228]
-#         target = normaliser.normalise(snapshot.y.view(-1)) 
-
-#         # Compute the loss
-#         mse = torch.mean((y_hat_single - target) ** 2)
-#         rmse = torch.sqrt(mse)
-
-#         # Add the loss to the total loss
-#         mse_loss = mse_loss + mse
-#         rmse_loss = rmse_loss + rmse
-
-#     rmse_loss = rmse_loss.item() / (time_step + 1)
-#     print(f"Test Loss: {rmse_loss:.4f}")
 
 
 
