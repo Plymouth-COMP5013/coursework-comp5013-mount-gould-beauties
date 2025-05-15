@@ -50,6 +50,9 @@ HIDDEN_CHANNELS = 32
 # Number of epochs to train the model. A good value is around 50, but early stopping may trigger the model to stop training earlier.
 EPOCHS = 50
 
+# Mini-batch Size:- The number of time snapshots before the model's weights get backpropagated. A good value is 16-64, but experimentation is recommended.
+MINIBATCH_SIZE = 32
+
 # Number of nodes in the dataset. Currently only 228 nodes are supported.
 NUM_NODES = 228
 
@@ -137,6 +140,9 @@ for epoch in tqdm(range(num_epochs), desc="Training Epochs"):
     raw_mse_loss_total = 0
     all_predictions = []
     all_targets = []
+    minibatch_count = 0
+    minibatch_loss = 0
+    optimizer.zero_grad()
 
     # ----- Shuffle and subset the dataset -----
     training_subset = shuffle_dataset(train_set)
@@ -162,7 +168,8 @@ for epoch in tqdm(range(num_epochs), desc="Training Epochs"):
 
         # ----- Compute the loss -----
         norm_mse_loss = torch.mean((y_hat_single - norm_targets) ** 2)
-        norm_mse_loss_total = norm_mse_loss_total + norm_mse_loss
+        norm_mse_loss_total += norm_mse_loss.item()
+        minibatch_loss = minibatch_loss + norm_mse_loss
 
         raw_y_hat_single = normaliser.denormalise(y_hat_single)
         raw_mse_loss = torch.mean((raw_y_hat_single - raw_targets) ** 2)
@@ -171,6 +178,17 @@ for epoch in tqdm(range(num_epochs), desc="Training Epochs"):
         # ----- Collect predictions and targets for later analysis -----
         all_predictions.append(y_hat_single.detach())
         all_targets.append(norm_targets.detach())
+
+        # ----- Backpropagation and optimisation -----
+        minibatch_count += 1
+        if minibatch_count == MINIBATCH_SIZE:
+
+            minibatch_loss = minibatch_loss / MINIBATCH_SIZE
+            minibatch_loss.backward()
+            optimizer.step()
+            optimizer.zero_grad()
+            minibatch_loss = torch.tensor(0.0, requires_grad=True)
+            minibatch_count = 0
 
     # ----- RMSE calculation -----
     avg_raw_mse_loss = raw_mse_loss_total / (time_step + 1)
@@ -181,10 +199,7 @@ for epoch in tqdm(range(num_epochs), desc="Training Epochs"):
 
     training_losses.append(avg_raw_rmse_loss.item())
 
-    # ----- Backpropagation and optimisation -----
-    avg_norm_mse_loss.backward()
-    optimizer.step()
-    optimizer.zero_grad()
+    # ----- Learning rate scheduler step -----
     scheduler.step()
 
     # ----- Validation begins -----
