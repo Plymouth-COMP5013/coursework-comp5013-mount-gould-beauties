@@ -20,28 +20,28 @@ from mechanisms.normalisation import ZScoreNormaliser
 
 # ========== OPTIONS ==========
 # Ratio of the dataset to use for training and validation. Example: 0.03 = 3% of the dataset.
-SUBSET_RATIO = 0.5
+SUBSET_RATIO = 0.33
 
 # Learning rate for the optimizer. A good value is 0.001, and will decrease with the learning rate scheduler.
 LEARNING_RATE = 0.001
 
 # Gamma for learning rate decay. A good value is between 0.7 and 0.9. Lower values than this will mean a more aggressive decay.
-GAMMA = 0.7
+GAMMA = 0.6
 
 # Learning rate decay step size. After how many epochs should the learning rate decay? Smaller values means it will decay quicker.
-STEP_SIZE = 5
+STEP_SIZE = 3
 
 # The number of epochs the learning rate scheduler takes to "warm-up".
-WARMUP_EPOCHS = 5
+WARMUP_EPOCHS = 10
 
 # Whether or not the model should use warmup. If False, the learning rate will decay at the STEP_SIZE interval.
-USE_WARMUP = False
+USE_WARMUP = True
 
 # Number of hidden channels in the model. A good value is usually between 16 and 64. Higher numbers have only seen worse performance and longer training times.
-HIDDEN_CHANNELS = 24
+HIDDEN_CHANNELS = 32
 
 # Number of epochs to train the model. A good value is around 50, but early stopping may trigger the model to stop training earlier.
-EPOCHS = 30
+EPOCHS = 50
 
 # Number of nodes in the dataset. Currently only 228 nodes are supported.
 NUM_NODES = 228
@@ -50,13 +50,13 @@ NUM_NODES = 228
 GRAPH_SUBFOLDER = "series_4"
 
 # Test number for the experiment. Can be used to identify the test run on a loss plot. Doesn't have to be a number, can be anything.
-TEST_NUMBER = "3.10"
+TEST_NUMBER = "4.1"
 
 # Extended description to be placed at the bottom of the plot. Describe what this test is about, maybe what you've changed. Again, can be anything.
-EXTENDED_DESC = "Loading Model 3.9 back in and giving it more time to train. First time trying out this feature. Let's see how it goes."
+EXTENDED_DESC = "An extended run of Test 3.9, as that was very very promising."
 
 # Patience for early stopping (i.e., how many epochs to wait before stopping if no improvement is seen). Kills the training if validation loss doesn't improve for this many epochs.
-PATIENCE = 5
+PATIENCE = 8
 
 # The improvement threshold for early stopping. If the validation loss doesn't improve by this amount, the training will stop.
 MIN_DELTA = 0.005
@@ -69,7 +69,7 @@ SAVE_ARCHITECTURE = True
 SAVE_STATE_DICT = True
 
 # Add a relative path to a pretrained model to load it in. If None, the model will be trained from scratch.
-PRETRAINED_MODEL_PATH = "saved_models/series_3/3_9/stgcn_model_state_dict_13-05-2025-19-01.pth"
+PRETRAINED_MODEL_PATH = None
 
 
 
