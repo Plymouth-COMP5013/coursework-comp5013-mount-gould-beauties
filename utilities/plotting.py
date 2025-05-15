@@ -10,7 +10,7 @@ from datetime import datetime
 
 
 # # ========== PLOTTING FUNCTIONS ==========
-def plot_and_save_loss(train_losses, val_losses, num_nodes, hidden_channels, learning_rate, decay, decay_step, intended_epochs, test_number, extended_desc, folder = 'graphs', subfolder = None):
+def plot_and_save_loss(train_losses, val_losses, num_nodes, hidden_channels, minibatch_size, decay, decay_step, intended_epochs, test_number, extended_desc, folder = 'graphs', subfolder = None):
     """
     Plots training loss over epochs, then saves the plot to a specified folder.
     
@@ -19,7 +19,7 @@ def plot_and_save_loss(train_losses, val_losses, num_nodes, hidden_channels, lea
         val_losses (list): List of validation loss values for each epoch, obtained during validation.
         num_nodes (int): Number of nodes in the graph.
         hidden_channels (int): Number of hidden channels in the model.
-        learning_rate (float): Learning rate used in training.
+        minibatch_size (int): Size of the minibatch used during training.
         decay (float): Decay rate for the learning rate.
         decay_step (int): Step size for the learning rate decay.
         intended_epochs (int): Intended number of epochs for training, which may have been unfulfilled due to early stopping.
@@ -52,6 +52,7 @@ def plot_and_save_loss(train_losses, val_losses, num_nodes, hidden_channels, lea
     text_str = (
         f"Nodes: {num_nodes}    "
         f"Hidden Channels: {hidden_channels}    "
+        f"Minibatch Size: {minibatch_size}    "
         f"LR Gamma: {decay}    "
         f"LR Decay Interval: {decay_step}    "
         f"Intended Epochs: {intended_epochs}    "

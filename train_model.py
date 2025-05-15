@@ -276,7 +276,7 @@ plot_and_save_loss(
     validation_losses,
     num_nodes=NUM_NODES,
     hidden_channels=HIDDEN_CHANNELS,
-    learning_rate=LEARNING_RATE,
+    minibatch_size=MINIBATCH_SIZE,
     decay=GAMMA,
     decay_step=STEP_SIZE,
     intended_epochs=EPOCHS,
