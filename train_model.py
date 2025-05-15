@@ -1,5 +1,5 @@
 # Author: Reef Lakin
-# Last Modified: 07.05.2025
+# Last Modified: 13.05.2025
 # Description: The main script for training our STGCN model on the traffic forecasting dataset.
 
 
@@ -20,19 +20,19 @@ from mechanisms.normalisation import ZScoreNormaliser
 
 # ========== OPTIONS ==========
 # Ratio of the dataset to use for training and validation. Example: 0.03 = 3% of the dataset.
-SUBSET_RATIO = 0.2
+SUBSET_RATIO = 0.33
 
 # Learning rate for the optimizer. A good value is 0.001, and will decrease with the learning rate scheduler.
 LEARNING_RATE = 0.001
 
 # Gamma for learning rate decay. A good value is between 0.7 and 0.9. Lower values than this will mean a more aggressive decay.
-GAMMA = 0.7
+GAMMA = 0.6
 
 # Learning rate decay step size. After how many epochs should the learning rate decay? Smaller values means it will decay quicker.
 STEP_SIZE = 3
 
 # The number of epochs the learning rate scheduler takes to "warm-up".
-WARMUP_EPOCHS = 5
+WARMUP_EPOCHS = 10
 
 # Whether or not the model should use warmup. If False, the learning rate will decay at the STEP_SIZE interval.
 USE_WARMUP = True
@@ -41,22 +41,22 @@ USE_WARMUP = True
 HIDDEN_CHANNELS = 32
 
 # Number of epochs to train the model. A good value is around 50, but early stopping may trigger the model to stop training earlier.
-EPOCHS = 20
+EPOCHS = 50
 
 # Number of nodes in the dataset. Currently only 228 nodes are supported.
 NUM_NODES = 228
 
 # Sub-folder for the graphs. If None is provided, the graphs will be saved in the highest level of the 'graphs' folder. Can be anything.
-GRAPH_SUBFOLDER = "series_3"
+GRAPH_SUBFOLDER = "series_4"
 
 # Test number for the experiment. Can be used to identify the test run on a loss plot. Doesn't have to be a number, can be anything.
-TEST_NUMBER = "3.8"
+TEST_NUMBER = "4.1"
 
 # Extended description to be placed at the bottom of the plot. Describe what this test is about, maybe what you've changed. Again, can be anything.
-EXTENDED_DESC = "The previous normalised weights experiment didn't work due to a bug. This is the first working test."
+EXTENDED_DESC = "An extended run of Test 3.9, as that was very very promising."
 
 # Patience for early stopping (i.e., how many epochs to wait before stopping if no improvement is seen). Kills the training if validation loss doesn't improve for this many epochs.
-PATIENCE = 4
+PATIENCE = 8
 
 # The improvement threshold for early stopping. If the validation loss doesn't improve by this amount, the training will stop.
 MIN_DELTA = 0.005
@@ -67,6 +67,9 @@ FORECAST_HORIZON = 3
 # Model saving options; would we like to save the model's architecture and state dictionary to the root directory?
 SAVE_ARCHITECTURE = True
 SAVE_STATE_DICT = True
+
+# Add a relative path to a pretrained model to load it in. If None, the model will be trained from scratch.
+PRETRAINED_MODEL_PATH = None
 
 
 
@@ -87,13 +90,23 @@ def lr_lambda(epoch):
     # After warmup, use the step decay
     else:
         return GAMMA ** ((epoch - WARMUP_EPOCHS) // STEP_SIZE)
+    
+
+
+# ========== LOAD MODEL ==========
+if PRETRAINED_MODEL_PATH is not None:
+    checkpoint = torch.load(PRETRAINED_MODEL_PATH)
+    model = STGCN(in_channels=1, hidden_channels=HIDDEN_CHANNELS, out_channels=1, num_nodes=NUM_NODES)
+    model.load_state_dict(checkpoint['model_state_dict'])
+    print("Pretrained model loaded successfully.")
+else:
+    model = STGCN(in_channels=1, hidden_channels=HIDDEN_CHANNELS, out_channels=1, num_nodes=NUM_NODES)
+    print("No pretrained model found. Training from scratch.")
 
 
 
 # ========== SETUP ==========
-model = STGCN(in_channels=1, hidden_channels=HIDDEN_CHANNELS, out_channels=1, num_nodes=NUM_NODES)
 optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
-loss_fn = nn.MSELoss()
 num_epochs = EPOCHS
 early_stopping = EarlyStopping(patience=PATIENCE, min_delta=MIN_DELTA)
 normaliser = ZScoreNormaliser(all_velocity_values)
@@ -119,10 +132,10 @@ for epoch in tqdm(range(num_epochs), desc="Training Epochs"):
     all_targets = []
 
     # ----- Shuffle and subset the dataset -----
-    training_subset = shuffle_dataset(train_set, epoch)
+    training_subset = shuffle_dataset(train_set)
     training_subset = subset_data(training_subset, subset_ratio=SUBSET_RATIO)
 
-    testing_subset = shuffle_dataset(test_set, epoch)
+    testing_subset = shuffle_dataset(test_set)
     testing_subset = subset_data(testing_subset, subset_ratio=SUBSET_RATIO)
 
     # ----- Training through each snapshot -----
@@ -160,7 +173,7 @@ for epoch in tqdm(range(num_epochs), desc="Training Epochs"):
     training_losses.append(avg_raw_rmse_loss.item())
 
     # ----- Backpropagation and optimisation -----
-    avg_norm_rmse_loss.backward()
+    avg_norm_mse_loss.backward()
     optimizer.step()
     optimizer.zero_grad()
     scheduler.step()

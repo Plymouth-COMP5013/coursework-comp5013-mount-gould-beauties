@@ -55,10 +55,9 @@ def plot_and_save_loss(train_losses, val_losses, num_nodes, hidden_channels, lea
     text_str = (
         f"Nodes: {num_nodes}    "
         f"Hidden Channels: {hidden_channels}    "
-        f"Learning Rate: {learning_rate}    "
         f"Subset Ratio: {subset_ratio_percentage}%   "
-        f"Decay: {decay}    "
-        f"Decay Step: {decay_step}    "
+        f"LR Gamma: {decay}    "
+        f"LR Decay Interval: {decay_step}    "
         f"Intended Epochs: {intended_epochs}    "
         f"Stopped at: Epoch {len(train_losses)}    "
         f"Final Loss: {val_losses[-1]:.4f}"
